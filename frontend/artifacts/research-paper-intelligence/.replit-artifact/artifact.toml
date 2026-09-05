@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Research Paper Intelligence"
+description = "A frontend-only AI research workspace that helps students and researchers upload papers, ask questions, summarize findings, and compare studies in a calm academic interface."
+version = "1.0.0"
+id = "artifacts/research-paper-intelligence"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22749
+
+[services.development]
+run = "pnpm --filter @workspace/research-paper-intelligence run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/research-paper-intelligence", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/research-paper-intelligence/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22749"
+BASE_PATH = "/"
