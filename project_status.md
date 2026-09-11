@@ -8,6 +8,18 @@ Backend: Initial development stage
 
 Current focus: PDF Processing & Document Understanding
 
+### Frontend ↔ Backend Integration
+
+Status: Implemented / In Progress
+
+- Frontend PDF upload is connected to the FastAPI upload endpoint.
+- Paper processing and retrieval are connected through a centralized frontend API service.
+- The processed paper response is displayed dynamically from pages, sections, and chunks.
+- Demo/static paper records and analysis outputs were removed from active application state.
+- The frontend includes an NLP pipeline visualization for the implemented Module 1 stages.
+- NLP analysis, embeddings, retrieval, summarization, Q&A, and comparison remain future modules.
+- The frontend uses the Vite `/api` proxy by default; set `VITE_API_BASE_URL` when the backend runs elsewhere.
+
 ## Completed
 
 - Project concept defined
