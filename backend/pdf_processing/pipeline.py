@@ -6,6 +6,10 @@ from .chunks import create_chunks
 from .pdf import extract_pages
 from .preprocess import clean_text
 from .sections import detect_sections
+from config import settings
+from nlp import extract_entities, extract_keywords
+from embeddings import embedder
+from vector_store import vector_store
 
 
 def generate_paper_id(existing_ids: Optional[set[str]] = None) -> str:
@@ -17,7 +21,7 @@ def generate_paper_id(existing_ids: Optional[set[str]] = None) -> str:
     return f"P{index:03d}"
 
 
-def process_paper(path: Union[str, Path], paper_id: Optional[str] = None, chunk_size: int = 1200, overlap: int = 150) -> Dict[str, object]:
+def process_paper(path: Union[str, Path], paper_id: Optional[str] = None, chunk_size: int = settings.chunk_size, overlap: int = settings.chunk_overlap) -> Dict[str, object]:
     source = Path(path)
     resolved_id = paper_id or generate_paper_id()
     raw_pages = extract_pages(source)
@@ -32,6 +36,11 @@ def process_paper(path: Union[str, Path], paper_id: Optional[str] = None, chunk_
         })
     sections = detect_sections(pages, resolved_id)
     chunks = create_chunks(sections, chunk_size=chunk_size, overlap=overlap)
+    full_text = "\n".join(page["cleaned_text"] for page in pages)
+    analysis = {"keywords": extract_keywords(full_text), "entities": extract_entities(full_text)}
+    if chunks:
+        vector_store.delete_paper(resolved_id)
+        vector_store.upsert_chunks(chunks, embedder.encode([str(chunk["text"]) for chunk in chunks]))
     return {
         "paper_id": resolved_id,
         "filename": source.name,
@@ -39,4 +48,6 @@ def process_paper(path: Union[str, Path], paper_id: Optional[str] = None, chunk_
         "pages": pages,
         "sections": sections,
         "chunks": chunks,
+        "analysis": analysis,
+        "indexing": {"chunk_count": len(chunks), "embedding_backend": embedder.backend, "vector_store": vector_store.backend},
     }

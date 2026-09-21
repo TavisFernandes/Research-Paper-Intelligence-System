@@ -31,3 +31,22 @@ def load_paper(paper_id: str) -> Optional[Dict[str, object]]:
     if not target.exists():
         return None
     return json.loads(target.read_text(encoding="utf-8"))
+
+
+def list_papers() -> list[Dict[str, object]]:
+    papers = []
+    for target in storage_dir().glob("P-*.json"):
+        try:
+            papers.append(json.loads(target.read_text(encoding="utf-8")))
+        except (json.JSONDecodeError, OSError):
+            continue
+    return sorted(papers, key=lambda paper: str(paper.get("paper_id", "")))
+
+
+def delete_paper(paper_id: str) -> bool:
+    paper = load_paper(paper_id)
+    if not paper:
+        return False
+    for target in storage_dir().glob(f"{paper_id}.*"):
+        target.unlink(missing_ok=True)
+    return True

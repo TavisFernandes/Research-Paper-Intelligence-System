@@ -14,7 +14,12 @@ def segment_sentences(text: str) -> List[str]:
     cleaned = clean_text(text)
     if not cleaned:
         return []
-    return [part.strip() for part in re.split(r"(?<=[.!?])\s+(?=[A-Z0-9])", cleaned) if part.strip()]
+    try:
+        import spacy
+        nlp = spacy.load("en_core_web_sm", disable=["ner", "tagger", "lemmatizer"])
+        return [sentence.text.strip() for sentence in nlp(cleaned).sents if sentence.text.strip()]
+    except Exception:
+        return [part.strip() for part in re.split(r"(?<=[.!?])\s+(?=[A-Z0-9])", cleaned) if part.strip()]
 
 
 def tokenize_text(text: str) -> List[str]:
@@ -27,6 +32,12 @@ def lemmatize_tokens(tokens: List[str]) -> List[str]:
     A trained lemmatizer can replace this function later without changing the
     pipeline contract.
     """
+    try:
+        import spacy
+        nlp = spacy.load("en_core_web_sm")
+        return [token.lemma_.lower() for token in nlp(" ".join(tokens)) if token.lemma_]
+    except Exception:
+        pass
     lemmas: List[str] = []
     for token in tokens:
         lower = token.lower()

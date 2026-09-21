@@ -30,7 +30,12 @@ export type ProcessedPaper = {
   pages: PaperPage[];
   sections: PaperSection[];
   chunks: PaperChunk[];
+  analysis?: { keywords: { keyword: string; score: number; count: number }[]; entities: { label: string; text: string }[] };
 };
+
+export type Citation = Pick<PaperChunk, 'paper_id' | 'chunk_id' | 'section_name' | 'page_start' | 'page_end' | 'text'> & { score?: number };
+export type AnswerResponse = { answer: string; citations: Citation[]; retrieved_count: number; backend: string };
+export type Comparison = { left_paper_id: string; right_paper_id: string; overall_similarity: number; dimensions: { dimension: string; left: string; right: string; similarity: number | null }[] };
 
 type UploadResponse = Pick<ProcessedPaper, 'paper_id' | 'filename' | 'total_pages'>;
 
@@ -69,4 +74,12 @@ export async function uploadAndProcessPaper(file: File): Promise<ProcessedPaper>
   const uploaded = await uploadPaper(file);
   await processPaper(uploaded.paper_id);
   return getPaper(uploaded.paper_id);
+}
+
+export function askPapers(query: string, paperIds: string[]): Promise<AnswerResponse> {
+  return request<AnswerResponse>('/api/qa', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, paper_ids: paperIds }) });
+}
+
+export function comparePapers(paperIds: string[]): Promise<Comparison> {
+  return request<Comparison>('/api/compare', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paper_ids: paperIds }) });
 }

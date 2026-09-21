@@ -1,38 +1,41 @@
-# PDF Processing Backend
+# Research Paper Intelligence Backend
 
-Module 1 implements PDF Processing & Document Understanding only. It preserves page metadata and raw text, uses normal text extraction before optional OCR, and produces section-aware chunks.
+The backend ingests PDFs, preserves paper → page → section → chunk provenance, derives scientific entities and keywords, indexes chunks for semantic retrieval, and exposes grounded Q&A, summaries, comparisons, and collection insights.
+
+Heavy models and infrastructure are optional. By default the application uses a deterministic local embedding and extractive summarization fallback, so it starts without Redis, a Hugging Face download, or an LLM key. Configure Redis, BGE-M3, LED, and an OpenAI-compatible Qwen endpoint in `.env` to enable production components.
 
 ## Setup
 
 ```powershell
 cd backend
-python -m venv .venv
+py -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+py -m pip install -r requirements.txt
+py -m spacy download en_core_web_sm
 ```
 
-OCR additionally requires the Tesseract executable to be installed and available on `PATH`. Without it, pages with no usable text are returned with `extraction_method: "ocr_unavailable"` rather than silently losing content.
+EasyOCR is used only when native text extraction is insufficient. First OCR use downloads its recognition weights.
 
 ## Run
 
 ```powershell
-uvicorn pdf_processing.api:app --reload --port 8000
+uvicorn main:app --reload --port 8000
 ```
 
 Endpoints:
 
-- `POST /api/papers/upload` with multipart field `file`
-- `POST /api/papers/process/{paper_id}` reprocesses the retained upload
-- `GET /api/papers/{paper_id}`
+- `GET /api/health`, `GET /api/papers`, `POST /api/papers/upload`, `GET|DELETE /api/papers/{paper_id}`
+- `POST /api/search`, `POST /api/qa`, `POST /api/summarize`
+- `POST /api/compare`, `POST /api/insights`
 
 The default temporary JSON storage directory is `backend/data`. Set `PAPER_STORAGE_DIR` to change it.
 
 ## Test
 
 ```powershell
-python -m pytest -q
+py -m pytest -q
 ```
 
 ## Contract
 
-`process_paper()` returns a dictionary with `paper_id`, `filename`, `total_pages`, `pages`, `sections`, and `chunks`. Every page preserves `raw_text` and `cleaned_text`; every section and chunk carries source page metadata.
+`process_paper()` returns `paper_id`, `filename`, `total_pages`, `pages`, `sections`, `chunks`, `analysis`, and `indexing`. Every page preserves raw text; every section, chunk, answer citation, and comparison dimension retains source provenance.
