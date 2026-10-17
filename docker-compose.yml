@@ -1,0 +1,42 @@
+# Redis Stack (RediSearch vector index) with append-only persistence, plus the API.
+#   docker compose up -d redis          # Redis only (run the API locally)
+#   docker compose up -d --build        # Redis + API on http://localhost:8000
+services:
+  redis:
+    image: redis/redis-stack-server:7.4.0-v3
+    command: ["redis-stack-server", "--appendonly", "yes", "--appendfsync", "everysec", "--dir", "/data"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data        # AOF lives here => embeddings survive container restarts
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build: ./backend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      VECTOR_STORE_BACKEND: redis
+      PAPER_STORAGE_DIR: /app/data
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-http://localhost:5173}
+    ports:
+      - "8000:8000"
+    volumes:
+      - paper-data:/app/data
+      - hf-cache:/root/.cache/huggingface
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  paper-data:
+  hf-cache:

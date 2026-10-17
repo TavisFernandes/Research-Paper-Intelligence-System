@@ -1,0 +1,14 @@
+# Core runtime (enough to run the API, ingestion, lexical/hybrid retrieval, extractive summaries and tests).
+# Heavy ML packages live in requirements-ml.txt so the core install stays small.
+fastapi>=0.110,<1.0
+uvicorn[standard]>=0.29,<1.0
+python-multipart>=0.0.9
+pydantic>=2.6,<3.0
+python-dotenv>=1.0
+pymupdf>=1.24
+spacy>=3.7,<4.0
+numpy>=1.26
+scikit-learn>=1.4
+rouge-score>=0.1.2
+redis>=5.0
+openai>=1.30,<4.0

@@ -1,0 +1,7 @@
+# Optional: BGE-M3 fine-tuning and evaluation.
+-r requirements.txt
+torch>=2.2
+transformers>=4.40
+sentence-transformers>=3.0
+datasets>=2.19
+accelerate>=0.30

@@ -1,0 +1,10 @@
+# Optional: real BGE-M3 embeddings, LED summarisation, OCR and scientific NER.
+-r requirements.txt
+torch>=2.2
+transformers>=4.40
+sentence-transformers>=3.0
+FlagEmbedding>=1.2.10          # BGE-M3 dense + sparse (lexical weights); sentence-transformers is used if absent
+sentencepiece>=0.2
+easyocr>=1.7                   # OCR fallback for scanned pages
+# Scientific NER (SciSpaCy) - install the model wheel separately, see README "SciSpaCy".
+# scispacy>=0.5.4

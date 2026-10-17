@@ -1,0 +1,21 @@
+# secrets / local state
+.env
+backend/data/
+data/
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+# models / checkpoints (large)
+checkpoints/
+*.safetensors
+*.bin
+Model_Training/LED_Model/*.pth
+# node
+node_modules/
+dist/
+.vercel/

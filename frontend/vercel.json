@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @workspace/research-paper-intelligence run build",
+  "outputDirectory": "artifacts/research-paper-intelligence/dist/public",
+  "rewrites": [{ "source": "/((?!assets/|favicon|robots).*)", "destination": "/index.html" }]
+}
