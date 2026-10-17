@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """Contrastive fine-tuning of BGE-M3 for scientific retrieval (query, positive[, hard negatives]).
 
 Objective: MultipleNegativesRankingLoss (InfoNCE) - every other positive/negative in the batch is a negative.
@@ -95,6 +96,28 @@ def main(argv: List[str] | None = None) -> None:
               "note": "Only evaluate claims after running training.bge_m3.compare on held-out data."}
     (args.output / "training_report.json").write_text(json.dumps(report, indent=2, default=str))
     print(f"Saved checkpoint to {args.output / 'final'}", file=sys.stderr)
+=======
+"""Optional BGE-M3 fine-tuning entry point using JSONL {query, positive} records."""
+import argparse
+import json
+from pathlib import Path
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("data", type=Path)
+    args = parser.parse_args()
+    pairs = [json.loads(line) for line in args.data.read_text(encoding="utf-8").splitlines() if line.strip()]
+    try:
+        from sentence_transformers import InputExample, SentenceTransformer, losses
+        from torch.utils.data import DataLoader
+        model = SentenceTransformer("BAAI/bge-m3")
+        loader = DataLoader([InputExample(texts=[item["query"], item["positive"]]) for item in pairs], shuffle=True, batch_size=8)
+        model.fit(train_objectives=[(loader, losses.MultipleNegativesRankingLoss(model))], epochs=1, warmup_steps=max(1, len(loader)//10))
+        model.save("bge-m3-research-finetuned")
+    except ImportError as error:
+        raise SystemExit("Install sentence-transformers and torch to fine-tune BGE-M3.") from error
+>>>>>>> origin/main
 
 
 if __name__ == "__main__":

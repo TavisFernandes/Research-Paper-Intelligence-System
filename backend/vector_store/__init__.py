@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """Vector store factory. The backend is chosen by ``VECTOR_STORE_BACKEND`` (auto | redis | memory)."""
 from __future__ import annotations
 
@@ -47,3 +48,8 @@ def set_vector_store(store: Optional[VectorStore]) -> None:
 
 
 __all__ = ["MemoryVectorStore", "RedisVectorStore", "VectorStore", "get_vector_store", "set_vector_store", "create_vector_store"]
+=======
+from .redis_store import RedisVectorStore, vector_store
+
+__all__ = ["RedisVectorStore", "vector_store"]
+>>>>>>> origin/main

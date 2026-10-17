@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """NLP preprocessing with spaCy (cleaning, sentence segmentation, tokenisation, lemmatisation).
 
 The text is normalised conservatively: numbers, citations ("[12]", "Smith et al., 2020"),
@@ -169,3 +170,58 @@ def remove_repeated_lines(page_texts: List[str], min_pages: int = 4, max_length:
         kept = [line for index, line in enumerate(lines) if not ((index < 3 or index >= len(lines) - 3) and norm(line) in boilerplate)]
         result.append("\n".join(kept))
     return result
+=======
+import re
+from typing import List
+
+
+def clean_text(text: str) -> str:
+    """Normalize whitespace while preserving the extracted words and order."""
+    text = text.replace("\u00ad", "")
+    text = re.sub(r"(?<=\w)-\s+(?=\w)", "", text)
+    lines = [re.sub(r"[ \t]+", " ", line).strip() for line in text.splitlines()]
+    return "\n".join(line for line in lines if line).strip()
+
+
+def segment_sentences(text: str) -> List[str]:
+    cleaned = clean_text(text)
+    if not cleaned:
+        return []
+    try:
+        import spacy
+        nlp = spacy.load("en_core_web_sm", disable=["ner", "tagger", "lemmatizer"])
+        return [sentence.text.strip() for sentence in nlp(cleaned).sents if sentence.text.strip()]
+    except Exception:
+        return [part.strip() for part in re.split(r"(?<=[.!?])\s+(?=[A-Z0-9])", cleaned) if part.strip()]
+
+
+def tokenize_text(text: str) -> List[str]:
+    return re.findall(r"[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)*'?", text)
+
+
+def lemmatize_tokens(tokens: List[str]) -> List[str]:
+    """Apply a deterministic lightweight lemmatization fallback.
+
+    A trained lemmatizer can replace this function later without changing the
+    pipeline contract.
+    """
+    try:
+        import spacy
+        nlp = spacy.load("en_core_web_sm")
+        return [token.lemma_.lower() for token in nlp(" ".join(tokens)) if token.lemma_]
+    except Exception:
+        pass
+    lemmas: List[str] = []
+    for token in tokens:
+        lower = token.lower()
+        if len(lower) > 5 and lower.endswith("ies"):
+            lower = lower[:-3] + "y"
+        elif len(lower) > 4 and lower.endswith("ing"):
+            lower = lower[:-3]
+        elif len(lower) > 4 and lower.endswith("ed"):
+            lower = lower[:-2]
+        elif len(lower) > 3 and lower.endswith("s") and not lower.endswith("ss"):
+            lower = lower[:-1]
+        lemmas.append(lower)
+    return lemmas
+>>>>>>> origin/main

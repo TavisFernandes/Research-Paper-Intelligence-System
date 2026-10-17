@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """Pydantic request/response schemas."""
 from __future__ import annotations
 
@@ -6,10 +7,26 @@ from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field, field_validator
 
 PaperId = str
+=======
+from typing import Any, Literal
+from pydantic import BaseModel, Field
+
+
+class Citation(BaseModel):
+    paper_id: str
+    filename: str = ""
+    chunk_id: str
+    section_name: str
+    page_start: int
+    page_end: int
+    text: str
+    score: float | None = None
+>>>>>>> origin/main
 
 
 class SearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=2000)
+<<<<<<< HEAD
     paper_ids: Optional[List[PaperId]] = Field(default=None, max_length=50)
     section_name: Optional[str] = Field(default=None, max_length=64)
     top_k: int = Field(default=8, ge=1, le=50)
@@ -73,3 +90,30 @@ class HealthResponse(BaseModel):
     status: Literal["ok", "degraded"]
     components: Dict[str, Any]
     warnings: List[str] = Field(default_factory=list)
+=======
+    paper_ids: list[str] | None = None
+    section_name: str | None = None
+    limit: int = Field(default=8, ge=1, le=30)
+
+
+class AnswerRequest(SearchRequest):
+    pass
+
+
+class SummaryRequest(BaseModel):
+    paper_id: str
+    section_name: str | None = None
+    max_sentences: int = Field(default=5, ge=1, le=15)
+
+
+class CompareRequest(BaseModel):
+    paper_ids: list[str] = Field(min_length=2, max_length=10)
+
+
+class HealthResponse(BaseModel):
+    status: Literal["ok"] = "ok"
+    vector_store: str
+    embedding_backend: str
+    llm_backend: str
+    details: dict[str, Any] = Field(default_factory=dict)
+>>>>>>> origin/main

@@ -7,8 +7,12 @@
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
+<<<<<<< HEAD
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
+=======
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+>>>>>>> origin/main
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -39,6 +43,7 @@
     "@radix-ui/react-toggle": "^1.1.3",
     "@radix-ui/react-toggle-group": "^1.1.3",
     "@radix-ui/react-tooltip": "^1.2.0",
+<<<<<<< HEAD
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query": "catalog:",
@@ -46,10 +51,22 @@
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
+=======
+    "@replit/vite-plugin-cartographer": "catalog:",
+    "@replit/vite-plugin-dev-banner": "catalog:",
+    "@replit/vite-plugin-runtime-error-modal": "catalog:",
+    "@tailwindcss/typography": "^0.5.15",
+    "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-query": "catalog:",
+>>>>>>> origin/main
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+<<<<<<< HEAD
+=======
+    "@workspace/api-client-react": "workspace:*",
+>>>>>>> origin/main
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "cmdk": "^1.1.1",
@@ -57,7 +74,10 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "catalog:",
     "input-otp": "^1.4.2",
+<<<<<<< HEAD
     "jsdom": "^30.1.3",
+=======
+>>>>>>> origin/main
     "lucide-react": "catalog:",
     "next-themes": "^0.4.6",
     "react": "catalog:",
@@ -73,7 +93,10 @@
     "tw-animate-css": "^1.4.0",
     "vaul": "^1.1.2",
     "vite": "catalog:",
+<<<<<<< HEAD
     "vitest": "^5.0.5",
+=======
+>>>>>>> origin/main
     "wouter": "^3.3.5",
     "zod": "catalog:"
   }
