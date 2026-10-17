@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 // Works locally and on Vercel without special environment variables:
 //   PORT / BASE_PATH are optional (defaults 5173 and "/"); VITE_API_BASE_URL is the backend origin
 //   used by the browser build (empty = same origin) and by the dev-server /api proxy.
@@ -27,6 +28,8 @@ export default defineConfig({
   },
   preview: { port, host: '0.0.0.0' },
 =======
+=======
+>>>>>>> origin/main
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
 const rawPort = process.env.PORT;
@@ -108,5 +111,8 @@ export default defineConfig({
     host: '0.0.0.0',
     allowedHosts: true,
   },
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
 });

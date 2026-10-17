@@ -36,6 +36,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { deletePaper, getHealth, listPapers, type Health, type PaperRow } from '@/lib/paper-api';
 import { ChatPanel } from '@/features/ChatPanel';
 import { CompareView } from '@/features/CompareView';
@@ -54,6 +55,8 @@ const MODES = [
 ] as const;
 type Mode = (typeof MODES)[number]['id'];
 =======
+=======
+>>>>>>> origin/main
 import { askPapers, comparePapers, uploadAndProcessPaper, type Comparison, type ProcessedPaper } from '@/lib/paper-api';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import NotFound from '@/pages/not-found';
@@ -105,6 +108,9 @@ function toPaper(data: ProcessedPaper, index: number): Paper {
     data,
   };
 }
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
 
 function Logo({ inverse = false }: { inverse?: boolean }) {
@@ -242,7 +248,12 @@ function Landing() {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 function Sidebar({ papers, activeId, onSelect, onUpload, onDelete }: { papers: PaperRow[]; activeId?: string; onSelect: (id: string) => void; onUpload: () => void; onDelete: (id: string) => void }) {
+=======
+function Sidebar({ papers, onUpload, onClear }: { papers: Paper[]; onUpload: () => void; onClear: () => void }) {
+  const [location] = useLocation();
+>>>>>>> origin/main
 =======
 function Sidebar({ papers, onUpload, onClear }: { papers: Paper[]; onUpload: () => void; onClear: () => void }) {
   const [location] = useLocation();
@@ -252,6 +263,7 @@ function Sidebar({ papers, onUpload, onClear }: { papers: Paper[]; onUpload: () 
       <div className="px-6 pb-8 pt-7"><Link href="/" className="focus-ring inline-flex rounded-lg" data-testid="link-console-logo"><Logo inverse /></Link></div>
       <div className="px-3">
         <div className="mono mb-2 px-3 text-[9px] uppercase tracking-[.18em] text-[#91aaa9]">Workspace</div>
+<<<<<<< HEAD
 <<<<<<< HEAD
         <Link href="/console" className="focus-ring mb-1 flex items-center gap-3 rounded-[4px] bg-[#38596a] px-3 py-2.5 text-[12px] text-[#fffaf2]"><BrainCircuit size={15} /> Reading desk</Link>
         <button onClick={onUpload} className="focus-ring flex w-full items-center gap-3 rounded-[4px] px-3 py-2.5 text-left text-[12px] text-[#bfcbc7] hover:bg-[#345366]" data-testid="button-sidebar-upload"><Plus size={15} /> Add papers</button>
@@ -266,6 +278,8 @@ function Sidebar({ papers, onUpload, onClear }: { papers: Paper[]; onUpload: () 
         ))}
       </div>
 =======
+=======
+>>>>>>> origin/main
         <Link href="/console" className={`focus-ring mb-1 flex items-center gap-3 rounded-[4px] px-3 py-2.5 text-[12px] ${location === '/console' ? 'bg-[#38596a] text-[#fffaf2]' : 'text-[#bfcbc7] hover:bg-[#345366]'}`} data-testid="link-workspace-nav"><BrainCircuit size={15} /> Reading desk</Link>
         <button onClick={onUpload} className="focus-ring flex w-full items-center gap-3 rounded-[4px] px-3 py-2.5 text-left text-[12px] text-[#bfcbc7] hover:bg-[#345366]" data-testid="button-sidebar-upload"><Plus size={15} /> Add papers</button>
       </div>
@@ -274,11 +288,15 @@ function Sidebar({ papers, onUpload, onClear }: { papers: Paper[]; onUpload: () 
         {papers.length === 0 ? <div className="mx-3 rounded border border-dashed border-[#6c8490] p-4 text-[11px] leading-5 text-[#aebfbb]">Your reading list is empty.<br />Add a paper to begin.</div> : papers.map(p => <div key={p.id} className="group flex items-start gap-2.5 rounded-[4px] px-3 py-3 hover:bg-[#345366]"><span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-[2px] text-[8px] font-bold text-[#29475a]" style={{ background: p.accent }}>{p.initials}</span><div className="min-w-0"><p className="truncate text-[11px] text-[#e8ece5]">{p.shortTitle}</p><p className="mt-1 text-[9px] text-[#9cb0ae]">{p.year} · {p.pages}</p></div></div>)}
       </div>
       <div className="border-t border-[#547080] px-6 py-5"><button onClick={() => window.alert('Settings are available in the full product.')} className="focus-ring flex items-center gap-3 text-[11px] text-[#bac9c4] hover:text-[#fffaf2]" data-testid="button-settings"><Settings2 size={15} /> Preferences</button><div className="mt-5 flex items-center gap-2"><div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#d6ad72] text-[10px] font-bold text-[#29475a]">AM</div><div><p className="text-[10px] text-[#e7ece5]">Alex Morgan</p><p className="text-[9px] text-[#91aaa9]">Research session</p></div></div></div>
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
     </aside>
   );
 }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 function HealthBadge() {
   const [health, setHealth] = useState<Health>();
@@ -359,6 +377,8 @@ function Console() {
     </div>
   );
 =======
+=======
+>>>>>>> origin/main
 function UploadTray({ open, onClose, onAdd, status, error }: { open: boolean; onClose: () => void; onAdd: (file: File) => void; status: string; error: string }) {
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -519,6 +539,9 @@ function Console() {
     <AnimatePresence>{mobileMenu && <><motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMobileMenu(false)} className="fixed inset-0 z-40 bg-[#182d3b]/35 lg:hidden" aria-label="Close navigation overlay" data-testid="button-close-mobile-overlay" /><motion.aside initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }} className="fixed inset-y-0 left-0 z-50 flex w-[270px] flex-col bg-[#29475a] text-[#f4eee4] lg:hidden"><div className="flex items-center justify-between px-6 pb-8 pt-7"><Link href="/" className="focus-ring rounded-lg" data-testid="link-mobile-logo"><Logo inverse /></Link><button onClick={() => setMobileMenu(false)} className="focus-ring rounded p-1 text-[#b8c7c2]" aria-label="Close navigation" data-testid="button-close-mobile-menu"><X size={18} /></button></div><div className="px-3"><span className="mono px-3 text-[9px] uppercase tracking-[.18em] text-[#91aaa9]">Workspace</span><button onClick={() => { setMobileMenu(false); setUploadOpen(true); }} className="focus-ring mt-3 flex w-full items-center gap-3 rounded-[4px] px-3 py-2.5 text-left text-[12px] font-medium text-[#bfcbc7] hover:bg-[#345366]" data-testid="button-mobile-upload"><Plus size={15} /> Add papers</button></div><div className="mt-7 flex-1 px-6 text-[11px] leading-6 text-[#aebfbb]">A focused desk for the papers you are trying to understand.</div></motion.aside></>}</AnimatePresence>
     <AnimatePresence>{toast && <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#29475a] px-4 py-2.5 text-[11px] font-medium text-[#f7f1e7] shadow-lg" role="status" data-testid="status-toast">{toast}</motion.div>}</AnimatePresence>
   </div>;
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
 }
 

@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Backend
 
 FastAPI service for ingestion, retrieval, RAG, summarisation, comparison and evaluation. See the root `README.md` for setup, API table and deployment.
@@ -29,6 +30,8 @@ pytest -q                                     # 131 tests, no network/GPU/models
 
 `Paper → pages[{paper_id,page_number,extraction_method,raw_text,cleaned_text}] → sections[{section_name,heading,page_start,page_end,text,page_spans,subsections}] → chunks[{chunk_id,paper_id,section_name,page_start,page_end,text,…}]`, plus `title`, `analysis{keywords,entities,backends,warnings}`, `indexing`, `content_sha256`. Chunk ids: `{paper_id}_{SECTION}_{NNN}`, deterministic and unique even with repeated section names.
 =======
+=======
+>>>>>>> origin/main
 # Research Paper Intelligence Backend
 
 The backend ingests PDFs, preserves paper → page → section → chunk provenance, derives scientific entities and keywords, indexes chunks for semantic retrieval, and exposes grounded Q&A, summaries, comparisons, and collection insights.
@@ -70,4 +73,7 @@ py -m pytest -q
 ## Contract
 
 `process_paper()` returns `paper_id`, `filename`, `total_pages`, `pages`, `sections`, `chunks`, `analysis`, and `indexing`. Every page preserves raw text; every section, chunk, answer citation, and comparison dimension retains source provenance.
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main

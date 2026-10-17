@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 """Retrieval metrics (Recall@5/10, MRR@10, nDCG@10) with no framework dependency."""
 from __future__ import annotations
 
@@ -40,6 +41,8 @@ def evaluate_rankings(rankings: Sequence[Sequence[str]], relevant: Sequence[Set[
     out["mrr@10"] = sum(_reciprocal_rank(items[:10], t) for items, t in zip(rankings, relevant)) / n
     return {key: round(value, 5) for key, value in out.items()}
 =======
+=======
+>>>>>>> origin/main
 """Standard retrieval evaluation metrics with no framework dependency."""
 import math
 
@@ -63,4 +66,7 @@ def _ndcg(items: list[str], targets: set[str]) -> float:
     dcg = sum(1 / math.log2(position + 2) for position, item in enumerate(items) if item in targets)
     ideal = sum(1 / math.log2(position + 2) for position in range(min(len(targets), len(items))))
     return dcg / ideal if ideal else 0.0
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main

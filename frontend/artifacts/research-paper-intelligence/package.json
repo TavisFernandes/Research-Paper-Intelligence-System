@@ -8,8 +8,12 @@
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
 <<<<<<< HEAD
+<<<<<<< HEAD
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
+=======
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+>>>>>>> origin/main
 =======
     "typecheck": "tsc -p tsconfig.json --noEmit"
 >>>>>>> origin/main
@@ -44,6 +48,7 @@
     "@radix-ui/react-toggle-group": "^1.1.3",
     "@radix-ui/react-tooltip": "^1.2.0",
 <<<<<<< HEAD
+<<<<<<< HEAD
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query": "catalog:",
@@ -52,18 +57,27 @@
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
 =======
+=======
+>>>>>>> origin/main
     "@replit/vite-plugin-cartographer": "catalog:",
     "@replit/vite-plugin-dev-banner": "catalog:",
     "@replit/vite-plugin-runtime-error-modal": "catalog:",
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query": "catalog:",
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+    "@workspace/api-client-react": "workspace:*",
+>>>>>>> origin/main
 =======
     "@workspace/api-client-react": "workspace:*",
 >>>>>>> origin/main
@@ -75,7 +89,10 @@
     "framer-motion": "catalog:",
     "input-otp": "^1.4.2",
 <<<<<<< HEAD
+<<<<<<< HEAD
     "jsdom": "^30.1.3",
+=======
+>>>>>>> origin/main
 =======
 >>>>>>> origin/main
     "lucide-react": "catalog:",
@@ -94,7 +111,10 @@
     "vaul": "^1.1.2",
     "vite": "catalog:",
 <<<<<<< HEAD
+<<<<<<< HEAD
     "vitest": "^5.0.5",
+=======
+>>>>>>> origin/main
 =======
 >>>>>>> origin/main
     "wouter": "^3.3.5",

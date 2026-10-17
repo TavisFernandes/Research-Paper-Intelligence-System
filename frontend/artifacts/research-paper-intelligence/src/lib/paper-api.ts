@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 /** Typed client for the FastAPI backend. Base URL comes from VITE_API_BASE_URL (empty = same origin / dev proxy). */
 
 export type JobStatus = 'queued' | 'processing' | 'completed' | 'failed' | 'duplicate';
@@ -59,6 +60,8 @@ export type Health = { status: 'ok' | 'degraded'; warnings: string[]; components
 
 const apiBaseUrl = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '').replace(/\/$/, '');
 =======
+=======
+>>>>>>> origin/main
 export type PaperPage = {
   paper_id: string;
   page_number: number;
@@ -101,6 +104,9 @@ export type Comparison = { left_paper_id: string; right_paper_id: string; overal
 type UploadResponse = Pick<ProcessedPaper, 'paper_id' | 'filename' | 'total_pages'>;
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -108,6 +114,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   try {
     response = await fetch(`${apiBaseUrl}${path}`, options);
   } catch {
+<<<<<<< HEAD
 <<<<<<< HEAD
     throw new Error('Unable to reach the backend. Check that the API is running and VITE_API_BASE_URL is correct.');
   }
@@ -151,6 +158,8 @@ export const summarizePaper = (paperId: string, sectionName?: string) =>
 export const comparePapers = (paperIds: [string, string], useLlm = false) => request<CompareResponse>('/api/compare', json({ paper_ids: paperIds, use_llm: useLlm }));
 export const getInsights = (paperIds: string[], useLlm = false) => request<InsightsResponse>('/api/insights', json({ paper_ids: paperIds, use_llm: useLlm }));
 =======
+=======
+>>>>>>> origin/main
     throw new Error('Unable to reach the paper processing backend.');
   }
 
@@ -188,4 +197,7 @@ export function askPapers(query: string, paperIds: string[]): Promise<AnswerResp
 export function comparePapers(paperIds: string[]): Promise<Comparison> {
   return request<Comparison>('/api/compare', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paper_ids: paperIds }) });
 }
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main

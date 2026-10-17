@@ -232,9 +232,12 @@ The overall technology stack is **NOT FINALIZED**. PDF and OCR libraries, prepro
 
 The backend is being developed by multiple team members independently. Keep modules separated, use stable interfaces and standardized data contracts, avoid unnecessary modification of other modules, and minimize merge conflicts.
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 ## Addendum: contract additions (v2)
 
 The original `Paper -> Page -> Section -> Chunk` contract is preserved. Added fields: paper `title`, `title_source`, `content_sha256`, `analysis`, `indexing`, `status`; section `heading`, `page_spans`, `subsections`; chunk `heading`, `chunk_index`, `char_count`, `title`, `filename`. Section names remain upper-case constants (`UNKNOWN` = text before the first recognised heading; `OTHER` = a numbered heading in sequence that is not a standard section).
+=======
+>>>>>>> origin/main
 =======
 >>>>>>> origin/main

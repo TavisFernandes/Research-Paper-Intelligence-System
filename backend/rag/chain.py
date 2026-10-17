@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 """Retrieval-augmented question answering with grounded, cited answers.
 
 Flow (mirrors the ATML pipeline): query -> embedding -> Redis/hybrid retrieval -> evidence
@@ -92,6 +93,8 @@ def answer_question(query: str, paper_ids: Optional[Sequence[str]] = None, secti
         out.setdefault("warnings", []).append("The answer contains no citations; treat it as unverified.")
     return out
 =======
+=======
+>>>>>>> origin/main
 """Grounded retrieval-augmented answering with citations."""
 from embeddings import embedder
 from llm import llm
@@ -111,4 +114,7 @@ def answer_question(query: str, paper_ids: list[str] | None = None, section_name
         else:
             generated = "Based on the retrieved passages: " + " ".join(hit["text"] for hit in hits[:2])
     return {"answer": generated, "citations": citations, "retrieved_count": len(hits), "backend": llm.backend}
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main

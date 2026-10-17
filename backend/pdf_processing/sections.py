@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 """Rule-based scientific section detection with page-level provenance.
 
 Only headings that can be identified reliably are used. Text before the first
@@ -94,6 +95,8 @@ def classify_heading(line: str, last_top_number: Optional[int] = None) -> Option
         if last_top_number is not None and int(number) == last_top_number + 1 and not re.search(r"[,;]$", body):
             return {"section": "OTHER", "heading": body.rstrip(":"), "level": 1, "number": number}
 =======
+=======
+>>>>>>> origin/main
 import re
 from typing import Dict, List, Optional
 
@@ -121,11 +124,15 @@ def _heading_name(line: str) -> Optional[str]:
     for section, aliases in SECTION_ALIASES.items():
         if normalized in aliases:
             return section
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
     return None
 
 
 def detect_sections(pages: List[Dict[str, object]], paper_id: str) -> List[Dict[str, object]]:
+<<<<<<< HEAD
 <<<<<<< HEAD
     """Group page text into sections. Every section keeps page provenance.
 
@@ -192,6 +199,8 @@ def detect_sections(pages: List[Dict[str, object]], paper_id: str) -> List[Dict[
             start_section(str(heading["section"]), str(heading["heading"]), page_number)
     flush()
 =======
+=======
+>>>>>>> origin/main
     sections: List[Dict[str, object]] = []
     current_name = "UNKNOWN"
     current_start = 1
@@ -216,5 +225,8 @@ def detect_sections(pages: List[Dict[str, object]], paper_id: str) -> List[Dict[
             else:
                 current_parts.append(line)
     flush(int(pages[-1]["page_number"]) if pages else 1)
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
     return sections

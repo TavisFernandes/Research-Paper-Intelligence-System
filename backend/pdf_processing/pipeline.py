@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 """Module-1 pipeline: PDF -> pages -> cleaning -> sections -> chunks -> analysis -> index."""
 from __future__ import annotations
 
@@ -23,6 +24,8 @@ logger = logging.getLogger(__name__)
 ProgressFn = Callable[[str, int], None]
 MIN_TOTAL_WORDS = 20
 =======
+=======
+>>>>>>> origin/main
 from pathlib import Path
 from typing import Dict, Optional, Union
 from uuid import uuid4
@@ -35,6 +38,9 @@ from config import settings
 from nlp import extract_entities, extract_keywords
 from embeddings import embedder
 from vector_store import vector_store
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
 
 
@@ -47,6 +53,7 @@ def generate_paper_id(existing_ids: Optional[set[str]] = None) -> str:
     return f"P{index:03d}"
 
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 def _choose_title(extracted: ExtractedDocument, filename: str) -> tuple[Optional[str], Optional[str]]:
     meta = str(extracted.metadata.get("title") or "").strip()
@@ -147,6 +154,8 @@ def process_paper(path: Union[str, Path], paper_id: Optional[str] = None, chunk_
     note("done", 100)
     return paper
 =======
+=======
+>>>>>>> origin/main
 def process_paper(path: Union[str, Path], paper_id: Optional[str] = None, chunk_size: int = settings.chunk_size, overlap: int = settings.chunk_overlap) -> Dict[str, object]:
     source = Path(path)
     resolved_id = paper_id or generate_paper_id()
@@ -177,4 +186,7 @@ def process_paper(path: Union[str, Path], paper_id: Optional[str] = None, chunk_
         "analysis": analysis,
         "indexing": {"chunk_count": len(chunks), "embedding_backend": embedder.backend, "vector_store": vector_store.backend},
     }
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main

@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 """Scientific entity extraction.
 
 Sources, reported on every entity as ``source``:
@@ -129,6 +130,8 @@ def extract_entities(text: str, max_chars: int = 200_000) -> List[Dict[str, obje
             merged[key] = {"label": label, "text": value, "source": source, "count": count}
     return sorted(merged.values(), key=lambda e: (-int(e["count"]), str(e["label"]), str(e["text"])))  # type: ignore[arg-type]
 =======
+=======
+>>>>>>> origin/main
 """Scientific entity extraction with spaCy enhancement and deterministic patterns."""
 import re
 from collections import defaultdict
@@ -157,4 +160,7 @@ def extract_entities(text: str) -> list[dict[str, str]]:
     except Exception:
         pass
     return [{"label": label, "text": value} for label, value in found]
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main

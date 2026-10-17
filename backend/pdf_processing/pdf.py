@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 """PDF text extraction: PyMuPDF for digital pages, EasyOCR only for image-based pages."""
 from __future__ import annotations
 
@@ -160,6 +161,8 @@ def extract_pages(path: Union[str, Path], minimum_words: Optional[int] = None, d
     """Backward-compatible wrapper returning only the page list."""
     return extract_document(path, minimum_words, dpi).pages
 =======
+=======
+>>>>>>> origin/main
 from pathlib import Path
 from typing import Dict, List, Union
 import re
@@ -210,4 +213,7 @@ def _ocr_page(path: Path, page_number: int, dpi: int) -> tuple[str, str]:
         return text, "ocr"
     except Exception:
         return "", "ocr_failed"
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main

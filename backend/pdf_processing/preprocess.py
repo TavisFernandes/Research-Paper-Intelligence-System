@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 """NLP preprocessing with spaCy (cleaning, sentence segmentation, tokenisation, lemmatisation).
 
 The text is normalised conservatively: numbers, citations ("[12]", "Smith et al., 2020"),
@@ -171,6 +172,8 @@ def remove_repeated_lines(page_texts: List[str], min_pages: int = 4, max_length:
         result.append("\n".join(kept))
     return result
 =======
+=======
+>>>>>>> origin/main
 import re
 from typing import List
 
@@ -224,4 +227,7 @@ def lemmatize_tokens(tokens: List[str]) -> List[str]:
             lower = lower[:-1]
         lemmas.append(lower)
     return lemmas
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main

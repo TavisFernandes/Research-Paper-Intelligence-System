@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 """Contrastive fine-tuning of BGE-M3 for scientific retrieval (query, positive[, hard negatives]).
 
 Objective: MultipleNegativesRankingLoss (InfoNCE) - every other positive/negative in the batch is a negative.
@@ -97,6 +98,8 @@ def main(argv: List[str] | None = None) -> None:
     (args.output / "training_report.json").write_text(json.dumps(report, indent=2, default=str))
     print(f"Saved checkpoint to {args.output / 'final'}", file=sys.stderr)
 =======
+=======
+>>>>>>> origin/main
 """Optional BGE-M3 fine-tuning entry point using JSONL {query, positive} records."""
 import argparse
 import json
@@ -117,6 +120,9 @@ def main() -> None:
         model.save("bge-m3-research-finetuned")
     except ImportError as error:
         raise SystemExit("Install sentence-transformers and torch to fine-tune BGE-M3.") from error
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
 
 

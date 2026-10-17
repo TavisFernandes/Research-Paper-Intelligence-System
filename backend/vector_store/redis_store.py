@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 """Redis Stack (RediSearch) vector store using HNSW/FLAT KNN with metadata filters.
 
 Requires a Redis server with the RediSearch module (e.g. ``redis/redis-stack-server``).
@@ -236,6 +237,8 @@ class RedisVectorStore:
             info.update({"connected": False, "error": exc.public_message})
         return info
 =======
+=======
+>>>>>>> origin/main
 """Redis vector repository with an in-process fallback for development and tests."""
 from __future__ import annotations
 import math
@@ -292,4 +295,7 @@ class RedisVectorStore:
 
 
 vector_store = RedisVectorStore()
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main

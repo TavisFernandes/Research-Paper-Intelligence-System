@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 # secrets / local state
 .env
 backend/data/
@@ -20,6 +21,10 @@ Model_Training/LED_Model/*.pth
 node_modules/
 dist/
 .vercel/
+=======
+
+Model_Training/LED_Model/*.pth
+>>>>>>> origin/main
 =======
 
 Model_Training/LED_Model/*.pth

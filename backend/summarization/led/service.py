@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 """Long-document summarisation: LED (token-aware, windowed) with an honest extractive fallback.
 
 * LED is loaded once (lazily) and only when ``ENABLE_LED=true``. ``LED_MODEL`` may be a Hugging Face id
@@ -202,6 +203,8 @@ def _highlights(paper: Dict[str, Any]) -> Dict[str, List[str]]:
     entities = paper.get("analysis", {}).get("entities", [])
     return {key: [e["text"] for e in entities if e["label"] == label][:8] for key, label in groups.items()}
 =======
+=======
+>>>>>>> origin/main
 """Long-document summary service; LED is loaded lazily, extractive summary is always available."""
 from pdf_processing.preprocess import segment_sentences
 from config import settings
@@ -223,4 +226,7 @@ def summarize(text: str, max_sentences: int = 5) -> dict[str, object]:
     ranked = sorted(enumerate(sentences), key=lambda item: len(item[1]), reverse=True)[:max_sentences]
     ranked.sort()
     return {"summary": " ".join(sentence for _, sentence in ranked), "backend": "extractive", "sentence_count": len(sentences)}
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main

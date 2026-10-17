@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 """BGE-M3 dense (and optional sparse) encoder with cached model loading.
 
 Backends, tried in order:
@@ -185,6 +186,8 @@ def set_embedder(instance: Optional[BgeM3Embedder]) -> None:
     with _embedder_lock:
         _embedder = instance
 =======
+=======
+>>>>>>> origin/main
 """BGE-M3 encoder with a deterministic hashing fallback for offline development."""
 from __future__ import annotations
 from hashlib import blake2b
@@ -235,4 +238,7 @@ class BgeM3Embedder:
 
 
 embedder = BgeM3Embedder()
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main

@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 """Configurable generation provider for any OpenAI-compatible chat endpoint.
 
 Works with vLLM, Together AI, Hugging Face Inference Providers, OpenRouter, Ollama, etc.
@@ -20,10 +21,15 @@ _THINK_RE = re.compile(r"<think>.*?</think>", re.S)
 """Generation provider. Remote OpenAI-compatible endpoints are opt-in."""
 from config import settings
 >>>>>>> origin/main
+=======
+"""Generation provider. Remote OpenAI-compatible endpoints are opt-in."""
+from config import settings
+>>>>>>> origin/main
 
 
 class LLMProvider:
     @property
+<<<<<<< HEAD
 <<<<<<< HEAD
     def configured(self) -> bool:
         return settings.llm_configured
@@ -67,6 +73,8 @@ class LLMProvider:
             raise LLMUnavailable("The language model returned an empty response.")
         return text
 =======
+=======
+>>>>>>> origin/main
     def backend(self) -> str:
         return "openai-compatible" if settings.llm_base_url and settings.llm_api_key else "extractive-fallback"
 
@@ -83,6 +91,9 @@ class LLMProvider:
             except Exception:
                 pass
         return ""
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
 
 

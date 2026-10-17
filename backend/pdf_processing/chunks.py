@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 """Sentence-aware hierarchical chunking: paper -> page -> section -> chunk."""
 from __future__ import annotations
 
@@ -115,6 +116,8 @@ def create_chunks(sections: List[Dict[str, object]], chunk_size: int = 1200, ove
             ordinal += 1
             chunks.append(_build_chunk(section, section_index, group, body, counters[name], ordinal, spans))
 =======
+=======
+>>>>>>> origin/main
 from typing import Dict, List
 from .preprocess import segment_sentences
 
@@ -153,5 +156,8 @@ def create_chunks(sections: List[Dict[str, object]], chunk_size: int = 1200, ove
                     "page_end": section["page_end"],
                     "text": chunk_text,
                 })
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
     return chunks

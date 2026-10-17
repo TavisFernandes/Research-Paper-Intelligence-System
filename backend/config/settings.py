@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 """Environment-backed application configuration.
 
 All values are read from environment variables (optionally loaded from a ``.env``
@@ -156,6 +157,8 @@ class Settings:
 
 settings = Settings.from_env()
 =======
+=======
+>>>>>>> origin/main
 """Environment-backed application configuration."""
 from dataclasses import dataclass
 import os
@@ -182,4 +185,7 @@ class Settings:
 
 
 settings = Settings()
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main

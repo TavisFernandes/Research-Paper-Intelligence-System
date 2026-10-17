@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 """Pydantic request/response schemas."""
 from __future__ import annotations
 
@@ -8,6 +9,8 @@ from pydantic import BaseModel, Field, field_validator
 
 PaperId = str
 =======
+=======
+>>>>>>> origin/main
 from typing import Any, Literal
 from pydantic import BaseModel, Field
 
@@ -21,11 +24,15 @@ class Citation(BaseModel):
     page_end: int
     text: str
     score: float | None = None
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
 
 
 class SearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=2000)
+<<<<<<< HEAD
 <<<<<<< HEAD
     paper_ids: Optional[List[PaperId]] = Field(default=None, max_length=50)
     section_name: Optional[str] = Field(default=None, max_length=64)
@@ -91,6 +98,8 @@ class HealthResponse(BaseModel):
     components: Dict[str, Any]
     warnings: List[str] = Field(default_factory=list)
 =======
+=======
+>>>>>>> origin/main
     paper_ids: list[str] | None = None
     section_name: str | None = None
     limit: int = Field(default=8, ge=1, le=30)
@@ -116,4 +125,7 @@ class HealthResponse(BaseModel):
     embedding_backend: str
     llm_backend: str
     details: dict[str, Any] = Field(default_factory=dict)
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main

@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 """FastAPI application: ingestion, retrieval, RAG, summaries, comparison, insights and evaluation."""
 from __future__ import annotations
 
@@ -275,6 +276,8 @@ def evaluate_summarization(request: SummarizationEvalRequest) -> Dict[str, Any]:
                 "backend": generated.get("backend"), "generated_summary": generated["summary"]}
     raise InvalidInputError("Provide predictions+references, or paper_id+reference_summary. ROUGE needs a valid reference summary.")
 =======
+=======
+>>>>>>> origin/main
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -378,4 +381,7 @@ def compare(request: CompareRequest) -> dict:
 @app.post("/api/insights")
 def insights(request: CompareRequest) -> dict:
     return research_insights([_paper_or_404(identifier) for identifier in request.paper_ids])
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main

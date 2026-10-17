@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 """Pairwise comparison and multi-paper insights.
 
 Two kinds of content are always kept apart:
@@ -222,6 +223,8 @@ def _insights_narrative(insights: Dict[str, Any]) -> Dict[str, Any]:
     except LLMUnavailable as exc:
         return {"status": "unavailable", "generated": False, "message": exc.public_message}
 =======
+=======
+>>>>>>> origin/main
 """Evidence-preserving pairwise and collection-level paper comparison."""
 from collections import Counter
 from embeddings import embedder
@@ -252,4 +255,7 @@ def research_insights(papers: list[dict]) -> dict[str, object]:
     entity_types = Counter(entity["label"] for paper in papers for entity in paper.get("analysis", {}).get("entities", []))
     pairs = [compare_papers(papers[a], papers[b]) for a in range(len(papers)) for b in range(a + 1, len(papers))]
     return {"paper_count": len(papers), "common_keywords": [key for key, _ in keywords.most_common(12)], "entity_type_counts": dict(entity_types), "pairwise": pairs}
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main

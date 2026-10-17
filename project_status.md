@@ -1,6 +1,7 @@
 # Project Status
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 See `IMPLEMENTATION_REPORT.md` for the detailed, verified status. Summary:
 
 | Area | Status |
@@ -19,6 +20,8 @@ See `IMPLEMENTATION_REPORT.md` for the detailed, verified status. Summary:
 | React frontend (upload progress, QA with citations, summaries, compare, insights) | Implemented; typecheck, build, 11 tests, live client↔API test |
 | Vercel / production deployment | Deployment-ready config; **not deployed** |
 =======
+=======
+>>>>>>> origin/main
 ## Overall Status
 
 Frontend: Existing / under development
@@ -164,4 +167,7 @@ Notes: This backend is intentionally isolated from the existing frontend workspa
 ### Module 1 Core Implementation
 
 - Added modular PDF extraction, optional OCR, preprocessing, section detection, chunking, storage, API endpoints, tests, and documentation.
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
