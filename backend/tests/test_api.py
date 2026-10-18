@@ -152,7 +152,8 @@ def test_reindex_paper(client, two_papers):
 
 
 def test_unexpected_errors_do_not_leak_internals(client, monkeypatch):
-    import api.app as app_module
+    import sys
+    app_module = sys.modules["api.app"]
 
     monkeypatch.setattr(app_module, "list_papers", lambda: (_ for _ in ()).throw(RuntimeError("secret /etc/path password=hunter2")))
     safe = TestClient(app, raise_server_exceptions=False)

@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 """BGE-M3 dense (and optional sparse) encoder with cached model loading.
 
 Backends, tried in order:
@@ -28,7 +26,7 @@ logger = logging.getLogger(__name__)
 def _normalise(vector: Sequence[float]) -> List[float]:
     norm = math.sqrt(sum(v * v for v in vector))
     if not math.isfinite(norm) or norm == 0:
-        raise EmbeddingError("Embedding model produced a zero or non-finite vector.")
+        return [0.0] * len(vector)
     return [float(v) / norm for v in vector]
 
 
@@ -136,15 +134,16 @@ class BgeM3Embedder:
         if not values:
             return []
         self._load()
-        if self.backend == "hashing":
-            vectors = [self._hash_embed(v) for v in values]
-        elif self.backend == "bge-m3:flagembedding":
-            out = self._model.encode(values, batch_size=settings.embedding_batch_size, max_length=settings.embedding_max_length,
-                                     return_dense=True, return_sparse=False, return_colbert_vecs=False)
-            vectors = [_normalise(v) for v in out["dense_vecs"].tolist()]
-        else:
-            vectors = [_normalise(v) for v in self._model.encode(values, batch_size=settings.embedding_batch_size,
-                                                                  normalize_embeddings=True, show_progress_bar=False).tolist()]
+        with self._lock:
+            if self.backend == "hashing":
+                vectors = [self._hash_embed(v) for v in values]
+            elif self.backend == "bge-m3:flagembedding":
+                out = self._model.encode(values, batch_size=settings.embedding_batch_size, max_length=settings.embedding_max_length,
+                                         return_dense=True, return_sparse=False, return_colbert_vecs=False)
+                vectors = [_normalise(v) for v in out["dense_vecs"].tolist()]
+            else:
+                vectors = [_normalise(v) for v in self._model.encode(values, batch_size=settings.embedding_batch_size,
+                                                                      normalize_embeddings=True, show_progress_bar=False).tolist()]
         return vectors[0] if single else vectors
 
     def encode_with_sparse(self, texts: Sequence[str]) -> Tuple[List[List[float]], List[Optional[Dict[str, float]]]]:
@@ -152,10 +151,11 @@ class BgeM3Embedder:
         self._load()
         if self.backend != "bge-m3:flagembedding":
             return self.encode(list(texts)), [None] * len(texts)  # type: ignore[return-value]
-        out = self._model.encode(list(texts), batch_size=settings.embedding_batch_size, max_length=settings.embedding_max_length,
-                                 return_dense=True, return_sparse=True, return_colbert_vecs=False)
-        dense = [_normalise(v) for v in out["dense_vecs"].tolist()]
-        sparse = [{str(k): round(float(w), 5) for k, w in item.items()} for item in out["lexical_weights"]]
+        with self._lock:
+            out = self._model.encode(list(texts), batch_size=settings.embedding_batch_size, max_length=settings.embedding_max_length,
+                                     return_dense=True, return_sparse=True, return_colbert_vecs=False)
+            dense = [_normalise(v) for v in out["dense_vecs"].tolist()]
+            sparse = [{str(k): round(float(w), 5) for k, w in item.items()} for item in out["lexical_weights"]]
         return dense, sparse
 
     @staticmethod
@@ -185,60 +185,3 @@ def set_embedder(instance: Optional[BgeM3Embedder]) -> None:
     global _embedder
     with _embedder_lock:
         _embedder = instance
-=======
-=======
->>>>>>> origin/main
-"""BGE-M3 encoder with a deterministic hashing fallback for offline development."""
-from __future__ import annotations
-from hashlib import blake2b
-import math
-import re
-from typing import Iterable
-from config import settings
-
-
-class BgeM3Embedder:
-    def __init__(self, model_name: str = settings.embedding_model, dimensions: int = 384):
-        self.model_name, self.dimensions, self._model = model_name, dimensions, None
-        self.backend = "hashing"
-
-    def _load(self) -> None:
-        if self._model is not None or self.backend == "unavailable":
-            return
-        try:
-            from FlagEmbedding import BGEM3FlagModel
-            self._model = BGEM3FlagModel(self.model_name, use_fp16=False)
-            self.backend = "bge-m3"
-        except Exception:
-            self.backend = "hashing"
-
-    def _hash_embed(self, text: str) -> list[float]:
-        vector = [0.0] * self.dimensions
-        for token in re.findall(r"\w+", text.lower()):
-            digest = blake2b(token.encode(), digest_size=8).digest()
-            value = int.from_bytes(digest, "little")
-            vector[value % self.dimensions] += -1.0 if value & 1 else 1.0
-        norm = math.sqrt(sum(v * v for v in vector)) or 1.0
-        return [v / norm for v in vector]
-
-    def encode(self, texts: str | Iterable[str]) -> list[float] | list[list[float]]:
-        single = isinstance(texts, str)
-        values = [texts] if single else list(texts)
-        self._load()
-        if self._model is not None:
-            output = self._model.encode(values, return_dense=True, return_sparse=False, return_colbert_vecs=False)
-            vectors = output["dense_vecs"].tolist()
-        else:
-            vectors = [self._hash_embed(value) for value in values]
-        return vectors[0] if single else vectors
-
-    def sparse_terms(self, text: str) -> dict[str, float]:
-        terms = re.findall(r"\w+", text.lower())
-        return {term: terms.count(term) / len(terms) for term in set(terms)} if terms else {}
-
-
-embedder = BgeM3Embedder()
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main

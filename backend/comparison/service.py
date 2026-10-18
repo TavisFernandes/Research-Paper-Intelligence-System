@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 """Pairwise comparison and multi-paper insights.
 
 Two kinds of content are always kept apart:
@@ -150,6 +148,26 @@ def _shared_terms(texts: Dict[str, str], top: int = 8) -> List[Dict[str, Any]]:
     return sorted(rows, key=lambda r: (-r["count"], r["term"]))[:top]
 
 
+def _recurring_themes_terms(papers: Sequence[Dict[str, Any]], top: int = 10) -> List[Dict[str, Any]]:
+    holders: Dict[str, set] = defaultdict(set)
+    for p in papers:
+        pid = p["paper_id"]
+        cached = p.get("analysis", {}).get("keywords", [])
+        if cached:
+            for item in cached:
+                kw = str(item.get("keyword", ""))
+                if " " not in kw:
+                    holders[kw].add(pid)
+        else:
+            text = " ".join(str(c.get("text", "")) for c in p.get("chunks", []))
+            if text.strip():
+                for item in extract_keywords(text, limit=15):
+                    if " " not in str(item["keyword"]):
+                        holders[str(item["keyword"])].add(pid)
+    rows = [{"term": t, "papers": sorted(pids), "count": len(pids)} for t, pids in holders.items() if len(pids) >= 2]
+    return sorted(rows, key=lambda r: (-r["count"], r["term"]))[:top]
+
+
 def research_insights(papers: Sequence[Dict[str, Any]], use_llm: bool = False) -> Dict[str, Any]:
     """Collection-level insights across >= 2 papers (reported vs inferred are labelled)."""
     if len(papers) < 2:
@@ -197,7 +215,7 @@ def research_insights(papers: Sequence[Dict[str, Any]], use_llm: bool = False) -
         "recurring_problems": {"type": "inferred", "shared_terms": _shared_terms(texts("research_problem")), "reported": reported("research_problem")},
         "common_limitations": {"type": "inferred", "shared_terms": _shared_terms(texts("limitations")), "reported": reported("limitations")},
         "recurring_themes": {"type": "inferred", "basis": "keywords occurring in >= 2 papers",
-                             "terms": _shared_terms({p["paper_id"]: " ".join(str(c["text"]) for c in p.get("chunks", [])) for p in papers}, top=10),
+                             "terms": _recurring_themes_terms(papers, top=10),
                              "note": "Publication years are not extracted, so no temporal trend is claimed."},
         "research_gaps": {"reported_future_work": reported("future_work"), "reported_limitations": reported("limitations"), "inferred": gaps_inferred[:10],
                           "note": "Reported items are the papers' own statements. Inferred items only describe differences within the selected papers, not gaps in the wider literature."},
@@ -222,40 +240,3 @@ def _insights_narrative(insights: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "ok", "generated": True, "text": text}
     except LLMUnavailable as exc:
         return {"status": "unavailable", "generated": False, "message": exc.public_message}
-=======
-=======
->>>>>>> origin/main
-"""Evidence-preserving pairwise and collection-level paper comparison."""
-from collections import Counter
-from embeddings import embedder
-from vector_store.redis_store import _cosine
-
-
-_DIMENSIONS = ("ABSTRACT", "INTRODUCTION", "METHODOLOGY", "DATASET", "EXPERIMENTS", "RESULTS", "LIMITATIONS", "CONCLUSION")
-
-
-def _section_text(paper: dict, name: str) -> str:
-    return " ".join(section["text"] for section in paper.get("sections", []) if section["section_name"] == name)[:2500]
-
-
-def compare_papers(left: dict, right: dict) -> dict[str, object]:
-    dimensions = []
-    for name in _DIMENSIONS:
-        left_text, right_text = _section_text(left, name), _section_text(right, name)
-        score = _cosine(embedder.encode(left_text), embedder.encode(right_text)) if left_text and right_text else None
-        dimensions.append({"dimension": name, "left": left_text or "Not identified", "right": right_text or "Not identified", "similarity": round(score, 3) if score is not None else None})
-    all_left = " ".join(chunk["text"] for chunk in left.get("chunks", []))
-    all_right = " ".join(chunk["text"] for chunk in right.get("chunks", []))
-    overall = _cosine(embedder.encode(all_left), embedder.encode(all_right)) if all_left and all_right else 0.0
-    return {"left_paper_id": left["paper_id"], "right_paper_id": right["paper_id"], "overall_similarity": round(overall, 3), "dimensions": dimensions}
-
-
-def research_insights(papers: list[dict]) -> dict[str, object]:
-    keywords = Counter(item["keyword"] for paper in papers for item in paper.get("analysis", {}).get("keywords", []))
-    entity_types = Counter(entity["label"] for paper in papers for entity in paper.get("analysis", {}).get("entities", []))
-    pairs = [compare_papers(papers[a], papers[b]) for a in range(len(papers)) for b in range(a + 1, len(papers))]
-    return {"paper_count": len(papers), "common_keywords": [key for key, _ in keywords.most_common(12)], "entity_type_counts": dict(entity_types), "pairwise": pairs}
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main
