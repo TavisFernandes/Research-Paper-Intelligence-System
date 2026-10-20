@@ -46,7 +46,15 @@ def _page_at(section: Dict[str, Any], offset: int) -> int:
     return int(section["page_start"])
 
 
+_SECTION_SENTENCE_CACHE: Dict[int, List[Dict[str, Any]]] = {}
+
+
 def _section_sentences(section: Dict[str, Any]) -> List[Dict[str, Any]]:
+    # Cache by object identity: compare/insights re-read the same section dicts across dimensions.
+    cache_key = id(section)
+    cached = _SECTION_SENTENCE_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
     text = str(section["text"])
     flat = text.replace("\n", " ")
     out = []
@@ -55,6 +63,9 @@ def _section_sentences(section: Dict[str, Any]) -> List[Dict[str, Any]]:
         if len(sentence.split()) >= 4:
             out.append({"text": sentence, "section_name": section["section_name"], "page": _page_at(section, start),
                         "page_start": _page_at(section, start), "page_end": _page_at(section, max(end - 1, start))})
+    if len(_SECTION_SENTENCE_CACHE) > 256:
+        _SECTION_SENTENCE_CACHE.clear()
+    _SECTION_SENTENCE_CACHE[cache_key] = out
     return out
 
 
@@ -66,7 +77,7 @@ def _chunk_id_for(paper: Dict[str, Any], sentence: str, section_name: str) -> Op
     return None
 
 
-def extract_dimension(paper: Dict[str, Any], key: str, max_evidence: int = 4, max_chars: int = 420) -> Dict[str, Any]:
+def extract_dimension(paper: Dict[str, Any], key: str, max_evidence: int = 3, max_chars: int = 320) -> Dict[str, Any]:
     """Return ``{status, evidence[], entities[]}`` for one dimension of one paper."""
     spec = DIM_BY_KEY[key]
     cue = re.compile(spec["cue"], re.I)
@@ -74,7 +85,13 @@ def extract_dimension(paper: Dict[str, Any], key: str, max_evidence: int = 4, ma
     evidence: List[Dict[str, Any]] = []
     for name in spec["sections"]:
         for section in (s for s in sections if s["section_name"] == name):
-            sentences = _section_sentences(section)
+            # Cap very long sections (e.g. survey INTRODUCTIONS) before sentence split.
+            if len(str(section.get("text") or "")) > 12000:
+                clipped = dict(section)
+                clipped["text"] = str(section["text"])[:12000]
+                sentences = _section_sentences(clipped)
+            else:
+                sentences = _section_sentences(section)
             matched = [s for s in sentences if cue.search(s["text"])]
             if name in spec.get("dedicated", []) and not matched:
                 matched = sentences[:2]  # a dedicated section is relevant by definition

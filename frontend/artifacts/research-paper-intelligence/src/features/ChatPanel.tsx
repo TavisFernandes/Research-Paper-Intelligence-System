@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, Quote, Send } from 'lucide-react';
-import { askPapers, type QAResponse } from '@/lib/paper-api';
+import { askPapers, searchPapers, type QAResponse } from '@/lib/paper-api';
 import { Eyebrow, ErrorNote, Loading, card, pages, paperLabel, sectionLabel } from './ui';
 
-type Turn = { id: number; question: string; response?: QAResponse; error?: string };
+type Turn = { id: number; question: string; response?: QAResponse; generatingAnswer?: boolean; error?: string };
 const SUGGESTIONS = ['Which dataset was used?', 'What methodology do the authors use?', 'What are the main results?', 'What limitations are reported?'];
 
 const STATUS_NOTE: Record<QAResponse['status'], string> = {
   answered: '', insufficient_evidence: 'The retrieved evidence was not sufficient to answer.',
   llm_unavailable: 'The language model is unavailable, so only retrieved evidence is shown.',
   evidence_only: 'No language model is configured, so only retrieved evidence is shown (no generated answer).',
+  generating: '',
 };
 
 export function ChatPanel({ paperIds, scopeLabel }: { paperIds: string[]; scopeLabel: string }) {
@@ -26,11 +27,36 @@ export function ChatPanel({ paperIds, scopeLabel }: { paperIds: string[]; scopeL
     setTurns(prev => [...prev, { id, question }]);
     setValue('');
     setBusy(true);
+    let evidenceResponse: QAResponse | undefined;
     try {
-      const response = await askPapers(question, paperIds);
-      setTurns(prev => prev.map(t => (t.id === id ? { ...t, response } : t)));
+      const search = await searchPapers(question, paperIds);
+      evidenceResponse = {
+        status: search.results.length ? 'generating' : 'insufficient_evidence',
+        answer: null,
+        message: search.results.length ? 'Relevant passages are ready. A cited answer is still being generated.' : undefined,
+        evidence: search.results.map((item, index) => ({ ref: index + 1, ...item })),
+        grounded: false,
+        citations_used: [],
+        retrieval: {
+          mode: search.mode,
+          embedding_backend: search.embedding_backend,
+          vector_store: search.vector_store,
+          warnings: search.warnings,
+        },
+        generation: { backend: 'pending', model: null },
+      };
+      setTurns(prev => prev.map(t => (t.id === id ? { ...t, response: evidenceResponse, generatingAnswer: search.results.length > 0 } : t)));
+      const response = await askPapers(question, paperIds, undefined, search.retrieval_id);
+      setTurns(prev => prev.map(t => (t.id === id ? { ...t, response, generatingAnswer: false } : t)));
     } catch (error) {
-      setTurns(prev => prev.map(t => (t.id === id ? { ...t, error: error instanceof Error ? error.message : 'The question could not be answered.' } : t)));
+      const message = error instanceof Error ? error.message : 'The question could not be answered.';
+      setTurns(prev => prev.map(t => {
+        if (t.id !== id) return t;
+        if (evidenceResponse) {
+          return { ...t, response: { ...evidenceResponse, status: 'llm_unavailable', message }, generatingAnswer: false };
+        }
+        return { ...t, error: message };
+      }));
     } finally {
       setBusy(false);
     }
@@ -49,8 +75,9 @@ export function ChatPanel({ paperIds, scopeLabel }: { paperIds: string[]; scopeL
           <div key={turn.id} className="space-y-3">
             <p className="ml-auto max-w-[85%] rounded-[8px] bg-[#29475a] px-3.5 py-2.5 text-[12px] text-[#f7f1e7]">{turn.question}</p>
             {turn.error && <ErrorNote message={turn.error} />}
-            {!turn.error && !turn.response && <Loading label="Retrieving evidence and generating an answer…" />}
+            {!turn.error && !turn.response && <Loading label="Finding relevant passages…" />}
             {turn.response && <Answer response={turn.response} />}
+            {!turn.error && turn.generatingAnswer && <Loading label="Writing a cited answer…" />}
           </div>
         ))}
         <div ref={endRef} />

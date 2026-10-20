@@ -6,6 +6,10 @@ os.environ.setdefault("ENABLE_LED", "false")
 os.environ.setdefault("ALLOW_HASHING_FALLBACK", "true")
 os.environ.setdefault("LLM_BASE_URL", "")
 os.environ.setdefault("LLM_API_KEY", "")
+os.environ["GEMINI_API_KEY"] = ""
+os.environ.setdefault("LLM_FALLBACK_BASE_URL", "")
+os.environ.setdefault("LLM_FALLBACK_API_KEY", "")
+os.environ.setdefault("LLM_FALLBACK_MODEL", "")
 
 import pytest
 
@@ -19,7 +23,7 @@ def isolated_state(tmp_path, monkeypatch):
     """Fresh storage dir, vector store, embedder and BM25 cache for every test."""
     monkeypatch.setenv("PAPER_STORAGE_DIR", str(tmp_path / "papers"))
     set_vector_store(MemoryVectorStore())
-    set_embedder(BgeM3Embedder(dimensions=256))
+    set_embedder(BgeM3Embedder(dimensions=256, force_hashing=True))
     invalidate_lexical_index()
     from ingestion import jobs as jobs_module
 

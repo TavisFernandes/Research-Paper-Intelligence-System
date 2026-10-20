@@ -8,7 +8,7 @@ from vector_store.redis_store import RedisVectorStore
 
 def test_local_retrieval_is_filterable():
     store = RedisVectorStore(url="redis://localhost:1")
-    encoder = BgeM3Embedder(dimensions=32)
+    encoder = BgeM3Embedder(dimensions=32, force_hashing=True)
     chunks = [{"paper_id": "P1", "chunk_id": "P1_001", "section_name": "METHODS", "page_start": 1, "page_end": 1, "text": "Transformers use attention."}]
     store.upsert_chunks(chunks, encoder.encode([chunks[0]["text"]]))
     assert store.search(encoder.encode("attention"), paper_ids=["P1"])[0]["chunk_id"] == "P1_001"

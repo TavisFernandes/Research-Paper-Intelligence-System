@@ -1,7 +1,5 @@
 # Project Status
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 See `IMPLEMENTATION_REPORT.md` for the detailed, verified status. Summary:
 
 | Area | Status |
@@ -12,162 +10,18 @@ See `IMPLEMENTATION_REPORT.md` for the detailed, verified status. Summary:
 | Dense (BGE-M3) / sparse (BM25) representations | Implemented; BGE-M3 weights not downloadable in test env, so semantic quality unverified |
 | Redis vector store (RediSearch HNSW/FLAT KNN) | Implemented; protocol tested against a fake server and plain Redis; **not run against Redis Stack** |
 | Hybrid retrieval, ranking, evidence gating | Implemented, tested |
-| RAG with citations (OpenAI-compatible LLM, default Qwen3.5-9B) | Implemented, tested with fake LLM; no real Qwen call made |
+| RAG with citations (Qwen3.5 cloud primary, Qwen3 8B local fallback) | Implemented; cloud primary and fallback behavior covered by mocked tests. QA reuses the search retrieval result, limits generated answers to 320 tokens, and applies a 16-second timeout to the primary request. The local fallback keeps its configured 300-second timeout. The current local `.env` has no cloud API key, so the live app uses the local fallback; no real cloud generation was verified. |
 | LED summarisation (windowed) + extractive fallback + ROUGE | Implemented; windowing logic tested with stubs; LED generation not run |
 | Pairwise comparison and multi-paper insights | Implemented, tested |
 | BGE-M3 fine-tuning + baseline/fine-tuned evaluation | Tooling implemented and unit-tested; **training not run, no results** |
-| FastAPI endpoints, validation, error handling | Implemented, tested (131 backend tests) |
-| React frontend (upload progress, QA with citations, summaries, compare, insights) | Implemented; typecheck, build, 11 tests, live client↔API test |
+| FastAPI endpoints, validation, error handling | Implemented; current focused API, RAG, and LLM regression tests pass (59 tests). |
+| React frontend (upload progress, QA with citations, summaries, compare, insights) | Implemented; prior typecheck, build, 11 tests, and live client↔API test passed. |
 | Vercel / production deployment | Deployment-ready config; **not deployed** |
-=======
-=======
->>>>>>> origin/main
-## Overall Status
 
-Frontend: Existing / under development
+## Recent response-latency and fallback updates
 
-Backend: Initial development stage
-
-Current focus: PDF Processing & Document Understanding
-
-### Frontend ↔ Backend Integration
-
-Status: Implemented / In Progress
-
-- Frontend PDF upload is connected to the FastAPI upload endpoint.
-- Paper processing and retrieval are connected through a centralized frontend API service.
-- The processed paper response is displayed dynamically from pages, sections, and chunks.
-- Demo/static paper records and analysis outputs were removed from active application state.
-- The frontend includes an NLP pipeline visualization for the implemented Module 1 stages.
-- NLP analysis, embeddings, retrieval, summarization, Q&A, and comparison remain future modules.
-- The frontend uses the Vite `/api` proxy by default; set `VITE_API_BASE_URL` when the backend runs elsewhere.
-
-## Completed
-
-- Project concept defined
-- Main project features defined
-- High-level workflow defined
-- High-level architecture defined
-- Frontend exists
-- Backend Module 1 implementation created
-- Project context files created
-
-## Current Work
-
-### Module 1 — PDF Processing & Document Understanding
-
-Status: IN PROGRESS
-
-Scope:
-
-- PDF input
-- Page-level text extraction
-- OCR fallback
-- Page metadata
-- Text cleaning
-- Sentence segmentation
-- Tokenization
-- Lemmatization
-- Section identification
-- Chunk creation
-- Structured output
-
-Implementation milestone:
-
-- Core pipeline, API, tests, and module documentation are present.
-- Additional real scanned-paper validation remains before this module is considered complete.
-
-## Future Modules
-
-### Module 2 — NLP Analysis & Information Extraction
-
-Includes TF-IDF, NER, keyword analysis, and research information extraction.
-
-Status: Not started
-
-### Module 3 — Semantic Embeddings & Retrieval
-
-Potential technologies: BGE-M3 and a vector database.
-
-Status: Not started. Technology not finalized.
-
-### Module 4 — Long-Document Summarization
-
-Potential model: LED / Longformer Encoder-Decoder.
-
-Evaluation: ROUGE-1, ROUGE-2, ROUGE-L.
-
-Status: Not started. Model and evaluation setup not finalized.
-
-### Module 5 — Question Answering / RAG
-
-Status: Not started
-
-### Module 6 — Pairwise Paper Comparison
-
-Status: Not started
-
-### Module 7 — Multi-Paper Research Insights
-
-Status: Not started
-
-## Experimental Technology Choices
-
-### PyMuPDF and pypdf
-
-Technology: PyMuPDF and pypdf
-Purpose: Page rendering and normal PDF text extraction
-Status: Experimental / Provisional
-Alternatives: Other PDF parsers and renderers
-Notes: pypdf is attempted first; PyMuPDF is used for OCR rendering when available.
-
-### pytesseract
-
-Technology: pytesseract with a local Tesseract installation
-Purpose: OCR fallback for pages without usable extracted text
-Status: Experimental / Provisional
-Alternatives: Other OCR engines
-Notes: OCR is optional and only attempted for pages below the usable-text threshold. Tesseract must be installed separately.
-
-### FastAPI
-
-Technology: FastAPI and Uvicorn
-Purpose: Thin API wrapper for upload, process, and retrieval
-Status: Experimental / Provisional
-Alternatives: Existing project API server or another Python web framework
-Notes: This backend is intentionally isolated from the existing frontend workspace.
-
-## Known Constraints
-
-- `/frontend` must not be modified while backend modules are independently developed.
-- Raw extracted text must be preserved.
-- Page numbers must be preserved.
-- OCR should only be used where necessary.
-- Data contracts should remain stable.
-- Technology choices are still under evaluation.
-- Rule-based lemmatization is a lightweight provisional fallback and is not a substitute for a trained linguistic model.
-- OCR requires the Tesseract executable in addition to the Python package.
-
-## Next Steps
-
-1. Validate OCR using representative scanned research papers.
-2. Tune section-heading and chunk-size rules against the team's sample papers.
-3. Complete PDF extraction and preprocessing acceptance tests.
-4. Finalize the Module 1 interface for downstream developers.
-5. Begin Module 2 only after the Module 1 contract is accepted.
-
-## Change Log
-
-### Initial Backend Setup
-
-- Created project context documentation.
-- Created project status tracking.
-- Started Module 1: PDF Processing & Document Understanding.
-
-### Module 1 Core Implementation
-
-- Added modular PDF extraction, optional OCR, preprocessing, section detection, chunking, storage, API endpoints, tests, and documentation.
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main
+- Chat shows retrieved passages while answer generation is underway and reuses the server-held search result for QA, avoiding a second retrieval pass.
+- QA generation is capped at `LLM_QA_MAX_TOKENS=320`. The cloud primary uses `LLM_QA_TIMEOUT_SECONDS=16`; when it is unavailable or the key is missing, QA retains the configured local model fallback (`qwen3:8b`, with `LLM_FALLBACK_TIMEOUT_SECONDS`, currently 300 seconds).
+- `/api/health` reports when the cloud key is missing and chat is using the configured fallback. With the current blank cloud key, local fallback generation is expected and may be slow on CPU; a sub-20-second local answer is not guaranteed.
+- No sample paper was added to live memory or the vector store. Regression tests used isolated test fixtures.
+- Latest verification: 59 focused backend tests passed; `git diff --check` passed. Pylance found no diagnostics in the touched RAG/provider files. No authenticated cloud model request or production deployment has been verified.

@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 """Retrieval-augmented question answering with grounded, cited answers.
 
 Flow (mirrors the ATML pipeline): query -> embedding -> Redis/hybrid retrieval -> evidence
@@ -14,7 +12,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from config import settings
 from errors import LLMUnavailable
-from llm import llm
+from llm import get_chat_llm, llm
 from retrieval import search_chunks
 
 SYSTEM_PROMPT = (
@@ -22,13 +20,17 @@ SYSTEM_PROMPT = (
     "Cite passages inline like [1] or [2][3]. If the passages do not contain the answer, reply exactly: "
     "\"The retrieved evidence is insufficient to answer this question.\" and say what is missing. "
     "Never add facts, numbers, datasets or conclusions that are not in the passages. "
-    "If passages disagree, say so. Be concise."
+    "If passages disagree, say so. Reply in at most 3 short sentences with citations."
 )
 INSUFFICIENT = "The retrieved evidence is insufficient to answer this question."
 _CITE_RE = re.compile(r"\[(\d+)\]")
+# Keep prompts small so local Ollama can answer within interactive latency budgets.
+_QA_MAX_CHARS = 1400
+_QA_MAX_ITEMS = 3
+_QA_PASSAGE_CHARS = 280
 
 
-def select_evidence(hits: Sequence[Dict[str, Any]], max_chars: int = 9000, max_items: int = 8) -> List[Dict[str, Any]]:
+def select_evidence(hits: Sequence[Dict[str, Any]], max_chars: int = _QA_MAX_CHARS, max_items: int = _QA_MAX_ITEMS) -> List[Dict[str, Any]]:
     """Keep supported hits in rank order within a context budget."""
     selected, used = [], 0
     for hit in hits:
@@ -44,12 +46,22 @@ def select_evidence(hits: Sequence[Dict[str, Any]], max_chars: int = 9000, max_i
     return selected
 
 
+def _clip_passage(text: Any, limit: int = _QA_PASSAGE_CHARS) -> str:
+    value = str(text or "")
+    if len(value) <= limit:
+        return value
+    return value[:limit].rsplit(" ", 1)[0] + "…"
+
+
 def build_messages(query: str, evidence: Sequence[Dict[str, Any]]) -> List[Dict[str, str]]:
     blocks = []
     for index, hit in enumerate(evidence, start=1):
         label = hit.get("title") or hit.get("filename") or hit.get("paper_id")
         pages = hit.get("page_start") if hit.get("page_start") == hit.get("page_end") else f"{hit.get('page_start')}-{hit.get('page_end')}"
-        blocks.append(f"[{index}] (paper: {label}; id: {hit.get('paper_id')}; section: {hit.get('section_name')}; page: {pages})\n{hit.get('text')}")
+        blocks.append(
+            f"[{index}] (paper: {label}; id: {hit.get('paper_id')}; section: {hit.get('section_name')}; page: {pages})\n"
+            f"{_clip_passage(hit.get('text'))}"
+        )
     return [{"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": "Evidence passages:\n\n" + "\n\n".join(blocks) + f"\n\nQuestion: {query}\n\nAnswer with citations:"}]
 
@@ -59,62 +71,78 @@ def _evidence_payload(evidence: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]
     return [{"ref": i, **{k: hit.get(k) for k in keys}} for i, hit in enumerate(evidence, start=1)]
 
 
+def _extractive_cited_answer(evidence: Sequence[Dict[str, Any]], limit: int = 3) -> str:
+    """Fast grounded answer from evidence when the generative model cannot meet the latency budget."""
+    parts: List[str] = []
+    for index, hit in enumerate(evidence[:limit], start=1):
+        text = re.sub(r"\s+", " ", str(hit.get("text") or "")).strip()
+        if not text:
+            continue
+        sentence = re.split(r"(?<=[.!?])\s+", text, maxsplit=1)[0].strip()
+        if len(sentence) > 220:
+            sentence = sentence[:220].rsplit(" ", 1)[0] + "…"
+        parts.append(f"{sentence} [{index}]")
+    return " ".join(parts)
+
+
 def answer_question(query: str, paper_ids: Optional[Sequence[str]] = None, section_names: Optional[Sequence[str]] = None,
-                    top_k: Optional[int] = None, mode: Optional[str] = None) -> Dict[str, Any]:
+                    top_k: Optional[int] = None, mode: Optional[str] = None,
+                    retrieved_chunks: Optional[Sequence[Dict[str, Any]]] = None,
+                    retrieval_metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Answer ``query`` from the indexed papers.
 
     ``status`` is one of: ``answered`` | ``insufficient_evidence`` | ``llm_unavailable`` | ``evidence_only``.
     Evidence is always returned so the user can verify or read the sources even if generation fails.
     """
-    retrieval = search_chunks(query, top_k=top_k or settings.default_top_k, mode=mode, paper_ids=paper_ids, section_names=section_names)
+    if retrieved_chunks is None:
+        retrieval = search_chunks(query, top_k=min(top_k or settings.default_top_k, 5), mode=mode, paper_ids=paper_ids, section_names=section_names)
+    else:
+        retrieval = {
+            "results": list(retrieved_chunks),
+            "returned": len(retrieved_chunks),
+            "mode": (mode or settings.retrieval_mode).lower(),
+            "embedding_backend": (retrieval_metadata or {}).get("embedding_backend", "unknown"),
+            "vector_store": (retrieval_metadata or {}).get("vector_store", "unknown"),
+            "warnings": (retrieval_metadata or {}).get("warnings", []),
+        }
     evidence = select_evidence(retrieval["results"])
+    chat_llm = get_chat_llm(llm)
     base: Dict[str, Any] = {"query": query, "evidence": _evidence_payload(evidence), "retrieved_count": retrieval["returned"],
                             "retrieval": {"mode": retrieval["mode"], "embedding_backend": retrieval["embedding_backend"],
                                           "vector_store": retrieval["vector_store"], "warnings": retrieval["warnings"]},
-                            "generation": {"backend": llm.backend, "model": settings.llm_model if llm.configured else None}}
+                            "generation": {"backend": chat_llm.backend, "model": chat_llm.info()["model"]}}
     if not evidence:
         return {**base, "status": "insufficient_evidence", "answer": INSUFFICIENT + " No sufficiently relevant passages were found in the selected papers.",
                 "grounded": False, "citations_used": []}
-    if not llm.configured:
-        return {**base, "status": "evidence_only", "answer": None, "grounded": False, "citations_used": [],
-                "message": "No language model is configured (set LLM_BASE_URL, LLM_API_KEY, LLM_MODEL). Showing the retrieved evidence only."}
+    if not chat_llm.configured:
+        text = _extractive_cited_answer(evidence)
+        cited = list(range(1, min(len(evidence), 3) + 1))
+        return {**base, "status": "answered", "answer": text, "grounded": True, "citations_used": cited,
+                "generation": {"backend": "extractive", "model": None, "fallback_used": True},
+                "warnings": ["No language model is configured; showing an extractive cited answer from retrieved evidence."]}
     try:
-        text = llm.chat(build_messages(query, evidence))
+        # Preserve the fast existing QA budget; Gemini gets a separate cloud timeout.
+        using_gemini = bool(settings.gemini_api_key)
+        qa_timeout = float(settings.gemini_timeout_seconds) if using_gemini else min(float(settings.llm_qa_timeout_seconds), 5.0)
+        qa_max_tokens = min(settings.gemini_qa_max_tokens, 512) if using_gemini else min(settings.llm_qa_max_tokens, 100)
+        text, generation = chat_llm.chat_with_info(
+            build_messages(query, evidence), max_tokens=qa_max_tokens, timeout_seconds=qa_timeout,
+        )
     except LLMUnavailable as exc:
-        return {**base, "status": "llm_unavailable", "answer": None, "grounded": False, "citations_used": [], "message": exc.public_message}
+        text = _extractive_cited_answer(evidence)
+        cited = list(range(1, min(len(evidence), 3) + 1))
+        return {**base, "status": "answered", "answer": text, "grounded": True, "citations_used": cited,
+                "generation": {"backend": "extractive", "model": chat_llm.info()["model"], "fallback_used": True},
+                "warnings": [f"{exc.public_message} Showing an extractive cited answer from retrieved evidence."]}
     cited = sorted({int(n) for n in _CITE_RE.findall(text) if 1 <= int(n) <= len(evidence)})
     invalid = {int(n) for n in _CITE_RE.findall(text)} - set(range(1, len(evidence) + 1))
     refused = INSUFFICIENT.lower() in text.lower()
     out = {**base, "status": "insufficient_evidence" if refused else "answered", "answer": text,
-           "grounded": bool(cited) and not refused, "citations_used": cited}
+           "grounded": bool(cited) and not refused, "citations_used": cited, "generation": generation}
+    if generation.get("warning"):
+        out["warnings"] = [str(generation["warning"])]
     if invalid:
-        out["warnings"] = [f"The model cited non-existent passages: {sorted(invalid)}."]
+        out.setdefault("warnings", []).append(f"The model cited non-existent passages: {sorted(invalid)}.")
     if not refused and not cited:
         out.setdefault("warnings", []).append("The answer contains no citations; treat it as unverified.")
     return out
-=======
-=======
->>>>>>> origin/main
-"""Grounded retrieval-augmented answering with citations."""
-from embeddings import embedder
-from llm import llm
-from vector_store import vector_store
-
-
-def answer_question(query: str, paper_ids: list[str] | None = None, section_name: str | None = None,
-                    limit: int = 6) -> dict[str, object]:
-    hits = vector_store.search(embedder.encode(query), limit=limit, paper_ids=paper_ids, section_name=section_name)
-    citations = [{key: hit[key] for key in ("paper_id", "chunk_id", "section_name", "page_start", "page_end", "text", "score")}
-                 for hit in hits]
-    context = "\n\n".join(f"[{index + 1}] {hit['text']}" for index, hit in enumerate(hits))
-    generated = llm.generate(query, context)
-    if not generated:
-        if not hits:
-            generated = "I could not find supporting text in the selected papers."
-        else:
-            generated = "Based on the retrieved passages: " + " ".join(hit["text"] for hit in hits[:2])
-    return {"answer": generated, "citations": citations, "retrieved_count": len(hits), "backend": llm.backend}
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main

@@ -55,17 +55,45 @@ def test_warns_when_embeddings_are_not_semantic(indexed):
     assert any("non-semantic" in w for w in search_chunks("BM25 negatives", mode="hybrid")["warnings"])
 
 
+def test_hybrid_falls_back_to_lexical_on_vector_dimension_mismatch(indexed, monkeypatch):
+    from errors import VectorStoreUnavailable
+    from vector_store import get_vector_store
+
+    store = get_vector_store()
+
+    def boom(*_a, **_k):
+        raise VectorStoreUnavailable(
+            "Redis index 'paper_chunks' was built with 1024-d vectors but the current embedder produces 384-d. "
+            'Rebuild with POST /api/reindex {"reset": true} after the embedding model is stable.'
+        )
+
+    monkeypatch.setattr(store, "search", boom)
+    out = search_chunks("BM25 negatives", mode="hybrid", include_low_confidence=True)
+    assert out["results"] and any("Dense retrieval skipped" in w for w in out["warnings"])
+    with pytest.raises(VectorStoreUnavailable, match="1024-d"):
+        search_chunks("BM25 negatives", mode="dense")
+
+
 class FakeLLM:
     configured, backend = True, "fake"
 
     def __init__(self, reply=None, error=None):
-        self.reply, self.error, self.messages = reply, error, None
+        self.reply, self.error, self.messages, self.max_tokens = reply, error, None, None
+        self.timeout_seconds = None
+
+    def info(self):
+        return {"model": "fake"}
 
     def chat(self, messages, **kw):
         self.messages = messages
+        self.max_tokens = kw.get("max_tokens")
         if self.error:
             raise self.error
         return self.reply
+
+    def chat_with_info(self, messages, **kw):
+        self.timeout_seconds = kw.get("timeout_seconds")
+        return self.chat(messages, **kw), {"backend": self.backend, "model": "fake", "fallback_used": False}
 
 
 def test_rag_answers_with_citations_and_evidence_metadata(indexed, monkeypatch):
@@ -73,10 +101,44 @@ def test_rag_answers_with_citations_and_evidence_metadata(indexed, monkeypatch):
     monkeypatch.setattr(chain, "llm", fake)
     out = answer_question("Which dataset was used for training?", top_k=4)
     assert out["status"] == "answered" and out["grounded"] is True and out["citations_used"] == [1]
+    assert fake.timeout_seconds == min(float(chain.settings.llm_qa_timeout_seconds), 5.0)
     ev = out["evidence"][0]
     assert ev["ref"] == 1 and ev["paper_id"] and ev["section_name"] and ev["page_start"] and ev["text"]
+    assert fake.max_tokens == min(int(chain.settings.llm_qa_max_tokens), 100)
     prompt = fake.messages[1]["content"]
     assert "[1] (paper:" in prompt and "Question: Which dataset" in prompt and "ONLY" in fake.messages[0]["content"]
+
+
+def test_rag_uses_gemini_chat_timeout(indexed, monkeypatch):
+    fake = FakeLLM("The model was trained on PubMedQA [1].")
+    monkeypatch.setattr(chain.settings, "gemini_api_key", "gemini-test-key")
+    monkeypatch.setattr(chain.settings, "gemini_timeout_seconds", 24.0)
+    monkeypatch.setattr(chain.settings, "gemini_qa_max_tokens", 350)
+    monkeypatch.setattr(chain, "get_chat_llm", lambda default_provider: fake)
+
+    out = answer_question("Which dataset was used for training?")
+
+    assert out["status"] == "answered"
+    assert fake.timeout_seconds == 24.0
+    assert fake.max_tokens == 350
+
+
+def test_rag_uses_pre_retrieved_chunks_without_repeating_search(indexed, monkeypatch):
+    fake = FakeLLM("The model was trained on PubMedQA [1].")
+    monkeypatch.setattr(chain, "llm", fake)
+    monkeypatch.setattr(chain, "search_chunks", lambda *args, **kwargs: pytest.fail("retrieval should not run twice"))
+    out = answer_question(
+        "Which dataset was used for training?",
+        retrieved_chunks=[{
+            "paper_id": "P001", "chunk_id": "P001_METHODOLOGY_001", "title": "Paper A",
+            "section_name": "METHODOLOGY", "page_start": 1, "page_end": 1,
+            "text": "The model was trained on PubMedQA.", "score": 0.02,
+            "dense_score": 0.8, "lexical_coverage": 0.7, "supported": True,
+        }],
+        retrieval_metadata={"embedding_backend": "bge-m3", "vector_store": "memory", "warnings": []},
+    )
+    assert out["status"] == "answered" and out["retrieval"]["embedding_backend"] == "bge-m3"
+    assert out["evidence"][0]["text"] == "The model was trained on PubMedQA."
 
 
 def test_rag_flags_hallucinated_citations_and_missing_citations(indexed, monkeypatch):
@@ -100,15 +162,19 @@ def test_rag_with_no_relevant_evidence_never_calls_llm(indexed, monkeypatch):
     assert "insufficient" in out["answer"].lower()
 
 
-def test_rag_without_llm_returns_evidence_only(indexed):
+def test_rag_without_llm_returns_extractive_cited_answer(indexed):
     out = answer_question("Which dataset was used for training?")
-    assert out["status"] == "evidence_only" and out["answer"] is None and out["evidence"] and "No language model" in out["message"]
+    assert out["status"] == "answered" and out["answer"] and out["evidence"]
+    assert out["generation"]["backend"] == "extractive" and out["grounded"] is True
+    assert any("No language model" in w for w in out["warnings"])
 
 
-def test_rag_llm_failure_degrades_gracefully(indexed, monkeypatch):
+def test_rag_llm_failure_degrades_to_extractive(indexed, monkeypatch):
     monkeypatch.setattr(chain, "llm", FakeLLM(error=LLMUnavailable("The language model timed out.")))
     out = answer_question("Which dataset was used for training?")
-    assert out["status"] == "llm_unavailable" and out["answer"] is None and out["evidence"] and "timed out" in out["message"]
+    assert out["status"] == "answered" and out["answer"] and out["evidence"]
+    assert out["generation"]["backend"] == "extractive" and out["grounded"] is True
+    assert any("timed out" in w for w in out["warnings"])
 
 
 def test_retrieval_metrics_known_values():

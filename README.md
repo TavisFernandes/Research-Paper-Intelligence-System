@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 # Research Paper Intelligence & Comparison System
 
 Upload research-paper PDFs, then search them, ask questions with page-level citations, read paper/section summaries, compare two papers across ten dimensions and get multi-paper insights. Implements the ATML pipeline:
@@ -7,7 +5,7 @@ Upload research-paper PDFs, then search them, ask questions with page-level cita
 ```
 PDFs → PyMuPDF (+EasyOCR for scanned pages) → page data → spaCy preprocessing → rule-based section detection
      → hierarchical chunks (paper→page→section→chunk) → NER + TF-IDF → BGE-M3 dense (+BM25 sparse) → Redis vector store
-     → hybrid retrieval → RAG (OpenAI-compatible LLM, default Qwen3.5-9B) │ LED summarisation → pairwise comparison → multi-paper insights
+     → hybrid retrieval → RAG (Gemini cloud API, local fallback) │ LED summarisation → pairwise comparison → multi-paper insights
 ```
 
 * **Backend:** FastAPI (`backend/`) · **Frontend:** React + Vite (`frontend/`, deployable on Vercel) · **Vector DB:** Redis Stack (RediSearch)
@@ -28,7 +26,7 @@ scripts/start_backend.sh                   # http://localhost:8000  (interactive
 scripts/start_frontend.sh                  # http://localhost:5173 -> open /console
 ```
 
-Without Docker/Redis the API falls back to a **non-persistent in-memory store** (reported in `/api/health` and in the UI badge). Without the ML extras it uses **non-semantic hashing embeddings** plus BM25, so retrieval is lexical-driven until BGE-M3 is installed. Both fallbacks are always reported, never silent.
+Without Docker/Redis the API falls back to a **non-persistent in-memory store** (reported in `/api/health` and in the UI badge). When the local fine-tuned checkpoint is present, it is selected automatically, but it needs the ML dependencies and the `BAAI/bge-m3` base model on first use. Without those dependencies the API uses **non-semantic hashing embeddings** plus BM25, so retrieval is lexical-driven. Both fallbacks are always reported, never silent. Configure a cloud LLM API key to generate answers; without one, chat returns the retrieved evidence and a clear configuration error rather than waiting on the slow local answer model.
 
 ### Enable the real models (optional, needs internet + disk)
 
@@ -38,15 +36,15 @@ scripts/setup_backend.sh ml                # torch, transformers, sentence-trans
 
 | Capability | How to enable | Notes |
 |---|---|---|
-| BGE-M3 dense (+ sparse weights) | install `requirements-ml.txt` (first use downloads `BAAI/bge-m3`, ~2.3 GB) | GPU used automatically if CUDA is available. `EMBEDDING_MODEL` can be a fine-tuned local checkpoint. **Changing the model changes the vector dimension/space → `POST /api/reindex {"reset": true}`.** |
+| BGE-M3 dense (+ sparse weights) | install `requirements-ml.txt` (first use downloads the `BAAI/bge-m3` base encoder, ~2.3 GB) | When `Model_Training/BGE_M3_Model/bge_m3_finetuned.pth` exists, it is selected by default and loaded on top of the base encoder using the notebook's mean pooling. GPU is used automatically if CUDA is available. **Changing the model changes the vector dimension/space; rebuild with `POST /api/reindex {"reset": true}` before searching.** |
 | OCR for scanned PDFs | `pip install easyocr` | Only pages with no/little text *and* images are OCR'd. Without EasyOCR such pages are flagged `ocr_unavailable`. |
 | SciSpaCy NER | `pip install scispacy` + a model wheel from the [SciSpaCy releases](https://github.com/allenai/scispacy#available-models) (e.g. `en_core_sci_sm`) | Without it, entities come from rules (+ spaCy `ORG`). Every entity records its `source`. |
 | LED summarisation | `ENABLE_LED=true` (+ ML extras) | Otherwise extractive summaries are returned, labelled `backend: "extractive"`. |
-| Grounded answers (Qwen3.5-9B) | set `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` in `.env` | Any OpenAI-compatible endpoint (vLLM, Together AI, HF Inference Providers…). Without it, `/api/qa` returns evidence only. |
+| Grounded answers | Set `GEMINI_API_KEY` in `.env` | Gemini is used only for chat answers; the existing `LLM_*` provider remains unchanged for paper comparisons. Chat falls back to the configured local model when Gemini is unavailable. Use `GEMINI_MODEL` to select another Gemini model (default: `gemini-3.1-flash-lite`); Gemini chat defaults to a 30-second timeout and a 512-token output budget. |
 
 ## Configuration
 
-All settings are environment variables; see `.env.example` (documented). Secrets (`LLM_API_KEY`) are only read from the environment, never logged or returned.
+All settings are environment variables; see `.env.example` (documented). Secrets (`GEMINI_API_KEY` and `LLM_API_KEY`) are only read from the environment, never logged or returned.
 
 ## API (FastAPI, docs at `/docs`)
 
@@ -58,7 +56,7 @@ All settings are environment variables; see `.env.example` (documented). Secrets
 | `GET /api/papers` · `GET /api/papers/{id}` · `DELETE /api/papers/{id}` | List / full paper (pages, sections, chunks, analysis) / delete incl. vectors |
 | `POST /api/papers/{id}/reindex` · `POST /api/reindex` | Rebuild vectors (`{"reset":true}` drops the Redis index first) |
 | `POST /api/search` | Ranked chunks (`dense` / `lexical` / `hybrid`), filters, `top_k`, evidence flag |
-| `POST /api/qa` | RAG answer + evidence; `status` ∈ `answered`, `insufficient_evidence`, `evidence_only`, `llm_unavailable` |
+| `POST /api/qa` | RAG answer + evidence; `status` ∈ `answered`, `insufficient_evidence`, `evidence_only`, `llm_unavailable`; the chat may pass the one-use, 60-second `retrieval_id` returned by `/api/search` to reuse server-held results |
 | `POST /api/summarize` | Paper summary + per-section summaries, or one `section_name` |
 | `POST /api/compare` | Two-paper structured comparison table (reported vs inferred are separated) |
 | `POST /api/insights` | Multi-paper insights (≥2 papers) |
@@ -86,10 +84,10 @@ python -m training.bge_m3.prepare_pubmedqa --config pqa_labeled --out data/bge_m
 python -m training.bge_m3.finetune --train data/bge_m3/train.jsonl --val data/bge_m3/validation.jsonl \
        --output checkpoints/bge-m3-sci --freeze-embeddings --cached-mini-batch 8 --gradient-checkpointing --bf16
 python -m training.bge_m3.compare --eval data/bge_m3/validation.jsonl --baseline BAAI/bge-m3 --finetuned checkpoints/bge-m3-sci/final
-# then: EMBEDDING_MODEL=checkpoints/bge-m3-sci/final  and  POST /api/reindex {"reset": true}
+# Then select the saved model with EMBEDDING_MODEL and POST /api/reindex {"reset": true}.
 ```
 
-**Read this before citing results:** PubMedQA has questions + abstract paragraphs + answers, *not* retrieval labels. Pairs are *constructed* (question → its abstract; negatives = other questions' abstracts, BM25-mined + random). That measures adaptation to biomedical question→abstract matching, not human-judged passage relevance in full papers, and a PubMedQA-tuned model may not transfer to other fields. Use `--granularity paragraph` only if you accept weak labels. The objective is InfoNCE (`MultipleNegativesRankingLoss`, optionally GradCache); only the dense head is tuned. **No fine-tuned weights are shipped and training was not run in this environment.**
+**Read this before citing results:** PubMedQA has questions + abstract paragraphs + answers, *not* retrieval labels. Pairs are *constructed* (question → its abstract; negatives = other questions' abstracts, BM25-mined + random). That measures adaptation to biomedical question→abstract matching, not human-judged passage relevance in full papers, and a PubMedQA-tuned model may not transfer to other fields. Use `--granularity paragraph` only if you accept weak labels. The objective is InfoNCE (`MultipleNegativesRankingLoss`, optionally GradCache); only the dense head is tuned. The local `Model_Training/BGE_M3_Model/bge_m3_finetuned.pth` checkpoint is a PyTorch state dict trained on the `BAAI/bge-m3` encoder and is loaded by the application when present.
 
 LED: `Model_Training/LED_Model/LED_Training.ipynb` is the team's LED-Base fine-tuning notebook (PubMed summarisation, 4096-token inputs, 3 epochs). `LED_evaluation_results.csv` in that folder records ROUGE-1 32.76 / ROUGE-2 10.10 / ROUGE-L 17.80 from that notebook run — *recorded by the team, not reproduced here*. The `.pth` in the repo is a Git-LFS pointer (no weights). To use your own checkpoint set `LED_MODEL` (HF-format dir) or `LED_STATE_DICT_PATH`, and match the training length (`LED_MAX_INPUT_TOKENS=4096`, `LED_WINDOW_TOKENS≈3500`). Evaluate with `python -m training.led.evaluate_checkpoint val.jsonl`.
 
@@ -134,29 +132,3 @@ docker-compose.yml · .env.example · scripts/
 | Answers show "evidence only" | set `LLM_BASE_URL` / `LLM_API_KEY` |
 | Weak retrieval, warning "non-semantic hashing" | install ML extras so BGE-M3 loads |
 | First request is slow | models load lazily once per process (BGE-M3 ~2 GB) |
-=======
-=======
->>>>>>> origin/main
-# Research Paper Intelligence System
-
-Paperintel is a full-stack workspace for reading, searching, summarizing, questioning, and comparing research PDFs with source-linked evidence.
-
-## Run locally
-
-1. Copy `.env.example` to `.env` and optionally configure Redis and an OpenAI-compatible Qwen endpoint.
-2. In `backend`, install `requirements.txt`, download `en_core_web_sm`, then run `uvicorn main:app --reload --port 8000`.
-3. In `frontend`, run `pnpm install` then `pnpm --filter @workspace/research-paper-intelligence dev`.
-
-The frontend proxies `/api` in development; otherwise set `VITE_API_BASE_URL=http://localhost:8000`.
-
-## Architecture
-
-`PDF → PyMuPDF text / EasyOCR fallback → spaCy preprocessing → sections → sentence-aware chunks → NER + keywords → BGE-M3 embeddings → Redis or local vector retrieval → RAG / summaries / comparisons`
-
-## Evaluation and training
-
-`backend/training/bge_m3/evaluate.py` reports Recall@K, MRR@10, and nDCG@K. `backend/training/bge_m3/finetune.py` accepts JSONL `{query, positive}` pairs (including PubMedQA-derived pairs). `backend/summarization/led/evaluate.py` reports ROUGE-1/2/L when references are available.
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main

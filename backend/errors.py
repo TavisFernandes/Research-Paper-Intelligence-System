@@ -42,6 +42,10 @@ class LLMUnavailable(AppError):
     status_code = 503
     public_message = "The language model is unavailable."
 
+    def __init__(self, message: str | None = None, *, retryable: bool = True):
+        super().__init__(message)
+        self.retryable = retryable
+
 
 class SummarizationUnavailable(AppError):
     status_code = 503

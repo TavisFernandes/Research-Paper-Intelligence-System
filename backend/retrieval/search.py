@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from config import settings
 from embeddings import get_embedder
-from errors import InvalidInputError
+from errors import InvalidInputError, VectorStoreUnavailable
 from vector_store import get_vector_store
 
 from .lexical import BM25Index, lexical_tokens
@@ -66,7 +66,18 @@ def search_chunks(query: str, top_k: Optional[int] = None, mode: Optional[str] =
 
     dense_hits: List[Dict[str, Any]] = []
     if mode in ("dense", "hybrid"):
-        dense_hits = store.search(embedder.encode(query), limit=pool, paper_ids=paper_ids, section_names=section_names)  # type: ignore[arg-type]
+        try:
+            dense_hits = store.search(embedder.encode(query), limit=pool, paper_ids=paper_ids, section_names=section_names)  # type: ignore[arg-type]
+        except VectorStoreUnavailable as exc:
+            # Hybrid can still answer from BM25 when the Redis vector dim no longer matches the embedder
+            # (e.g. BGE-M3 index + hashing fallback without torch). Dense-only keeps the clear 503.
+            message = exc.public_message
+            if mode == "hybrid" and ("-d vectors" in message or "vector dimension does not match" in message):
+                warnings.append(f"{message} Dense retrieval skipped; using lexical ranking.")
+                logger.warning("Dense retrieval unavailable (%s); continuing with lexical ranking.", message)
+                dense_hits = []
+            else:
+                raise
     # The BM25 index is always available: it also supplies the lexical-coverage evidence check.
     lexical_index = _lexical_index()
     lexical_hits: List[Dict[str, Any]] = []

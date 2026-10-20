@@ -145,6 +145,14 @@ def test_dimension_mismatch_requires_reindex():
         store.ensure_index(1024)
 
 
+def test_search_rejects_query_dimension_mismatch():
+    store = make_store()
+    store.ensure_index(384)
+    store.upsert_chunks([chunk(1, text="alpha")], [[1.0] + [0.0] * 383])
+    with pytest.raises(VectorStoreUnavailable, match="384-d"):
+        store.search([0.0] * 1024, limit=3)
+
+
 def test_knn_query_string_and_tag_escaping():
     store = make_store()
     q = store.build_query(8, ["P-1", "P002"], ["RESULTS"])
@@ -163,6 +171,37 @@ def test_upsert_search_roundtrip_and_idempotency():
     assert hits[0]["chunk_id"] == "P1_RESULTS_001" and hits[0]["text"] == "alpha"
     assert 0.9 < hits[0]["score"] <= 1.0 and isinstance(hits[0]["page_start"], int)
     assert {c["chunk_id"] for c in store.all_chunks()} == {"P1_RESULTS_001", "P1_RESULTS_002"}
+
+
+def test_parse_redisearch_structured_search_response():
+    reply = {
+        b"total_results": 1,
+        b"results": [
+            {
+                b"id": b"paper_chunks:doc:P1_RESULTS_001",
+                b"extra_attributes": {
+                    b"vector_score": b"0.1",
+                    b"chunk_id": b"P1_RESULTS_001",
+                    b"paper_id": b"P1",
+                    b"section_name": b"RESULTS",
+                },
+                b"values": [
+                    b"text", b"alpha",
+                    b"page_start", b"1",
+                    b"meta", b'{"custom":"value"}',
+                ],
+            }
+        ],
+    }
+
+    hits = RedisVectorStore.parse_reply(reply)
+
+    assert len(hits) == 1
+    assert hits[0]["chunk_id"] == "P1_RESULTS_001"
+    assert hits[0]["text"] == "alpha"
+    assert hits[0]["page_start"] == 1
+    assert hits[0]["custom"] == "value"
+    assert hits[0]["score"] == 0.9
 
 
 def test_delete_paper_does_not_touch_prefix_lookalikes():

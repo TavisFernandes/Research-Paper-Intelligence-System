@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 """Redis Stack (RediSearch) vector store using HNSW/FLAT KNN with metadata filters.
 
 Requires a Redis server with the RediSearch module (e.g. ``redis/redis-stack-server``).
@@ -54,6 +52,14 @@ class RedisVectorStore:
             self.client = redis.from_url(self.url, decode_responses=False, socket_connect_timeout=3, socket_timeout=10)
 
     # ---------------------------------------------------------------- connectivity
+    def _dimension_mismatch_error(self, index_dim: int, query_dim: int, model: Optional[str] = None) -> VectorStoreUnavailable:
+        model_note = f" ({model})" if model else ""
+        return VectorStoreUnavailable(
+            f"Redis index '{self.index_name}' was built with {index_dim}-d vectors{model_note} "
+            f"but the current embedder produces {query_dim}-d. "
+            'Rebuild with POST /api/reindex {"reset": true} after the embedding model is stable.'
+        )
+
     def _cmd(self, *args: Any) -> Any:
         try:
             return self.client.execute_command(*args)
@@ -66,6 +72,22 @@ class RedisVectorStore:
                 ) from exc
             if "unknown index name" in text or "no such index" in text:
                 raise
+            # Query vector byte length must match FLOAT32 * DIM (e.g. after switching to hashing fallback).
+            if "query vector blob size" in text or "does not match index's expected size" in text:
+                query_dim = self._dimension
+                stored = self.client.get(self.meta_key)
+                index_dim = None
+                model = None
+                if stored:
+                    meta = json.loads(_decode(stored))
+                    index_dim = int(meta["dimension"]) if meta.get("dimension") is not None else None
+                    model = meta.get("model")
+                if index_dim is not None and query_dim is not None:
+                    raise self._dimension_mismatch_error(index_dim, query_dim, model) from exc
+                raise VectorStoreUnavailable(
+                    f"Redis index '{self.index_name}' vector dimension does not match the current embedder. "
+                    'Rebuild with POST /api/reindex {"reset": true}.'
+                ) from exc
             raise VectorStoreUnavailable(f"Redis request failed ({type(exc).__name__}). Check REDIS_URL and that the server is running.") from exc
 
     def verify(self) -> None:
@@ -86,12 +108,9 @@ class RedisVectorStore:
         if self._index_exists():
             if stored:
                 meta = json.loads(_decode(stored))
-                if int(meta.get("dimension", dimension)) != dimension:
-                    raise VectorStoreUnavailable(
-                        f"Redis index '{self.index_name}' was built with {meta['dimension']}-d vectors "
-                        f"({meta.get('model')}) but the current embedder produces {dimension}-d. "
-                        "Call reset_index() / DELETE the index and re-index your papers."
-                    )
+                index_dim = int(meta.get("dimension", dimension))
+                if index_dim != dimension:
+                    raise self._dimension_mismatch_error(index_dim, dimension, meta.get("model"))
             self._dimension = dimension
             return
         algorithm = settings.redis_index_algorithm if settings.redis_index_algorithm in ("HNSW", "FLAT") else "HNSW"
@@ -176,6 +195,15 @@ class RedisVectorStore:
                section_names: Optional[Sequence[str]] = None) -> List[Dict[str, Any]]:
         self.verify()
         array = np.asarray(vector, dtype=np.float32)
+        query_dim = int(array.shape[0])
+        self._dimension = query_dim
+        # Fail fast with an actionable message when the live embedder no longer matches the index.
+        stored = self.client.get(self.meta_key)
+        if stored and self._index_exists():
+            meta = json.loads(_decode(stored))
+            index_dim = int(meta["dimension"]) if meta.get("dimension") is not None else None
+            if index_dim is not None and index_dim != query_dim:
+                raise self._dimension_mismatch_error(index_dim, query_dim, meta.get("model"))
         query = self.build_query(limit, paper_ids, section_names)
         try:
             reply = self._cmd("FT.SEARCH", self.index_name, query, "PARAMS", 2, "vec", array.tobytes(),
@@ -189,10 +217,35 @@ class RedisVectorStore:
 
     @staticmethod
     def parse_reply(reply: Any) -> List[Dict[str, Any]]:
+        def field_mapping(raw: Any) -> Dict[str, Any]:
+            if isinstance(raw, dict):
+                return {_decode(key): _decode(value) for key, value in raw.items()}
+            if isinstance(raw, (list, tuple)) and len(raw) % 2 == 0:
+                return {_decode(raw[i]): _decode(raw[i + 1]) for i in range(0, len(raw), 2)}
+            raise VectorStoreUnavailable("Redis returned an invalid vector search result.")
+
+        if isinstance(reply, dict):
+            response = {_decode(key): value for key, value in reply.items()}
+            documents = response.get("results")
+            if not isinstance(documents, list):
+                raise VectorStoreUnavailable("Redis returned an invalid vector search response.")
+            rows = []
+            for document in documents:
+                if not isinstance(document, dict):
+                    raise VectorStoreUnavailable("Redis returned an invalid vector search result.")
+                document = {_decode(key): value for key, value in document.items()}
+                fields = field_mapping(document.get("extra_attributes", {}))
+                fields.update(field_mapping(document.get("values", [])))
+                rows.append(fields)
+        elif isinstance(reply, (list, tuple)):
+            if len(reply) % 2 != 1:
+                raise VectorStoreUnavailable("Redis returned an invalid vector search response.")
+            rows = [field_mapping(reply[i + 1]) for i in range(1, len(reply), 2)]
+        else:
+            raise VectorStoreUnavailable("Redis returned an invalid vector search response.")
+
         results: List[Dict[str, Any]] = []
-        for i in range(1, len(reply), 2):
-            raw = reply[i + 1]
-            fields = {_decode(raw[j]): _decode(raw[j + 1]) for j in range(0, len(raw), 2)}
+        for fields in rows:
             extra = json.loads(fields.pop("meta", "{}") or "{}")
             distance = float(fields.pop("vector_score", 1.0))
             record: Dict[str, Any] = {**extra, **fields}
@@ -236,66 +289,3 @@ class RedisVectorStore:
         except VectorStoreUnavailable as exc:
             info.update({"connected": False, "error": exc.public_message})
         return info
-=======
-=======
->>>>>>> origin/main
-"""Redis vector repository with an in-process fallback for development and tests."""
-from __future__ import annotations
-import math
-from typing import Any
-from config import settings
-
-
-def _cosine(left: list[float], right: list[float]) -> float:
-    product = sum(a * b for a, b in zip(left, right))
-    norms = math.sqrt(sum(a * a for a in left)) * math.sqrt(sum(b * b for b in right))
-    return product / norms if norms else 0.0
-
-
-class RedisVectorStore:
-    def __init__(self, url: str = settings.redis_url, index_name: str = settings.redis_index):
-        self.index_name, self._records, self.client = index_name, {}, None
-        self.backend = "memory"
-        try:
-            import redis
-            self.client = redis.from_url(url, decode_responses=True)
-            self.client.ping()
-            self.backend = "redis"
-        except Exception:
-            self.client = None
-
-    def upsert_chunks(self, chunks: list[dict[str, Any]], vectors: list[list[float]]) -> int:
-        for chunk, vector in zip(chunks, vectors):
-            record = {**chunk, "vector": vector}
-            self._records[str(chunk["chunk_id"])] = record
-            if self.client:
-                import json
-                self.client.hset(f"{self.index_name}:{chunk['chunk_id']}", mapping={"payload": json.dumps(record)})
-        return len(chunks)
-
-    def delete_paper(self, paper_id: str) -> int:
-        keys = [key for key, value in self._records.items() if value["paper_id"] == paper_id]
-        for key in keys:
-            del self._records[key]
-            if self.client:
-                self.client.delete(f"{self.index_name}:{key}")
-        return len(keys)
-
-    def search(self, vector: list[float], limit: int = 8, paper_ids: list[str] | None = None,
-               section_name: str | None = None) -> list[dict[str, Any]]:
-        records = self._records.values()
-        matches = []
-        for item in records:
-            if paper_ids and item["paper_id"] not in paper_ids:
-                continue
-            if section_name and item["section_name"] != section_name:
-                continue
-            matches.append({k: v for k, v in item.items() if k != "vector"} | {"score": round(_cosine(vector, item["vector"]), 5)})
-        return sorted(matches, key=lambda match: match["score"], reverse=True)[:limit]
-
-
-vector_store = RedisVectorStore()
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main

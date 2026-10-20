@@ -3,7 +3,7 @@ import re
 import pytest
 
 from comparison import DIMENSIONS, compare_papers, extract_dimension, extract_reported_results, research_insights
-from comparison.service import NOT_REPORTED
+from comparison.service import NOT_REPORTED, _recurring_themes_terms
 from errors import InvalidInputError
 
 
@@ -73,3 +73,17 @@ def test_insights(paper_a, paper_b):
 def test_insights_need_two_papers(paper_a):
     with pytest.raises(InvalidInputError):
         research_insights([paper_a])
+
+
+def test_recurring_themes_use_cached_keywords_and_fallback(monkeypatch):
+    papers = [
+        {"paper_id": "P001", "analysis": {"keywords": [{"keyword": "shared"}, {"keyword": "two words"}]},
+         "chunks": [{"text": "ignored cached paper content"}]},
+        {"paper_id": "P002", "analysis": {"keywords": [{"keyword": "shared"}]}},
+        {"paper_id": "P003", "chunks": [{"text": "fallback paper content"}]},
+    ]
+    monkeypatch.setattr("comparison.service.extract_keywords", lambda text, limit: [{"keyword": "shared"}, {"keyword": "fallback"}])
+
+    assert _recurring_themes_terms(papers) == [
+        {"term": "shared", "papers": ["P001", "P002", "P003"], "count": 3}
+    ]

@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 """Environment-backed application configuration.
 
 All values are read from environment variables (optionally loaded from a ``.env``
@@ -11,6 +9,19 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+
+
+_FINETUNED_EMBEDDING_CHECKPOINT = (
+    Path(__file__).resolve().parents[2]
+    / "Model_Training"
+    / "BGE_M3_Model"
+    / "bge_m3_finetuned.pth"
+)
+_DEFAULT_EMBEDDING_MODEL = (
+    str(_FINETUNED_EMBEDDING_CHECKPOINT)
+    if _FINETUNED_EMBEDDING_CHECKPOINT.is_file()
+    else "BAAI/bge-m3"
+)
 
 
 def _load_dotenv() -> None:
@@ -58,7 +69,7 @@ class Settings:
     redis_index_algorithm: str = "HNSW"  # HNSW or FLAT
 
     # --- Embeddings -----------------------------------------------------------
-    embedding_model: str = "BAAI/bge-m3"
+    embedding_model: str = _DEFAULT_EMBEDDING_MODEL
     embedding_device: str = "auto"  # auto | cpu | cuda | mps
     embedding_batch_size: int = 16
     embedding_max_length: int = 512
@@ -74,12 +85,23 @@ class Settings:
     rrf_k: int = 60
 
     # --- LLM ------------------------------------------------------------------
+    gemini_api_key: str = field(default="", repr=False)
+    gemini_model: str = "gemini-3.1-flash-lite"
+    gemini_timeout_seconds: float = 30.0
+    gemini_qa_max_tokens: int = 512
     llm_base_url: str = ""
     llm_api_key: str = field(default="", repr=False)
     llm_model: str = "Qwen/Qwen3.5-9B"
     llm_timeout_seconds: float = 60.0
     llm_max_tokens: int = 700
+    llm_qa_max_tokens: int = 320
+    llm_qa_timeout_seconds: float = 16.0
     llm_temperature: float = 0.1
+    llm_fallback_base_url: str = ""
+    llm_fallback_api_key: str = field(default="", repr=False)
+    llm_fallback_model: str = ""
+    llm_fallback_timeout_seconds: float = 300.0
+    llm_fallback_max_tokens: int = 700
 
     # --- Summarisation --------------------------------------------------------
     led_model: str = "allenai/led-base-16384"
@@ -116,7 +138,7 @@ class Settings:
             redis_index_algorithm=os.getenv("REDIS_INDEX_ALGORITHM", "HNSW").upper(),
             embedding_model=os.getenv("EMBEDDING_MODEL", cls.embedding_model),
             embedding_device=os.getenv("EMBEDDING_DEVICE", "auto").lower(),
-            embedding_batch_size=_int("EMBEDDING_BATCH_SIZE", 16),
+            embedding_batch_size=_int("EMBEDDING_BATCH_SIZE", 8),
             embedding_max_length=_int("EMBEDDING_MAX_LENGTH", 512),
             allow_hashing_fallback=_bool("ALLOW_HASHING_FALLBACK", True),
             hashing_dimensions=_int("HASHING_DIMENSIONS", 384),
@@ -125,12 +147,23 @@ class Settings:
             min_dense_score=_float("MIN_DENSE_SCORE", 0.35),
             min_lexical_coverage=_float("MIN_LEXICAL_COVERAGE", 0.5),
             rrf_k=_int("RRF_K", 60),
+            gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip(),
+            gemini_model=os.getenv("GEMINI_MODEL", cls.gemini_model).strip(),
+            gemini_timeout_seconds=_float("GEMINI_TIMEOUT_SECONDS", 30.0),
+            gemini_qa_max_tokens=_int("GEMINI_QA_MAX_TOKENS", 512),
             llm_base_url=os.getenv("LLM_BASE_URL", "").strip(),
             llm_api_key=os.getenv("LLM_API_KEY", "").strip(),
             llm_model=os.getenv("LLM_MODEL", cls.llm_model),
             llm_timeout_seconds=_float("LLM_TIMEOUT_SECONDS", 60.0),
             llm_max_tokens=_int("LLM_MAX_TOKENS", 700),
+            llm_qa_max_tokens=_int("LLM_QA_MAX_TOKENS", 320),
+            llm_qa_timeout_seconds=_float("LLM_QA_TIMEOUT_SECONDS", 16.0),
             llm_temperature=_float("LLM_TEMPERATURE", 0.1),
+            llm_fallback_base_url=os.getenv("LLM_FALLBACK_BASE_URL", "").strip(),
+            llm_fallback_api_key=os.getenv("LLM_FALLBACK_API_KEY", "").strip(),
+            llm_fallback_model=os.getenv("LLM_FALLBACK_MODEL", "").strip(),
+            llm_fallback_timeout_seconds=_float("LLM_FALLBACK_TIMEOUT_SECONDS", 300.0),
+            llm_fallback_max_tokens=_int("LLM_FALLBACK_MAX_TOKENS", 700),
             led_model=os.getenv("LED_MODEL", cls.led_model),
             enable_led=_bool("ENABLE_LED", False),
             led_max_input_tokens=_int("LED_MAX_INPUT_TOKENS", 16384),
@@ -152,40 +185,15 @@ class Settings:
 
     @property
     def llm_configured(self) -> bool:
-        return bool(self.llm_base_url and self.llm_api_key)
+        return self.llm_primary_configured or self.llm_fallback_configured
+
+    @property
+    def llm_primary_configured(self) -> bool:
+        return bool(self.llm_base_url and self.llm_api_key and self.llm_model)
+
+    @property
+    def llm_fallback_configured(self) -> bool:
+        return bool(self.llm_fallback_base_url and self.llm_fallback_api_key and self.llm_fallback_model)
 
 
 settings = Settings.from_env()
-=======
-=======
->>>>>>> origin/main
-"""Environment-backed application configuration."""
-from dataclasses import dataclass
-import os
-
-
-def _bool(name: str, default: bool = False) -> bool:
-    return os.getenv(name, str(default)).lower() in {"1", "true", "yes", "on"}
-
-
-@dataclass(frozen=True)
-class Settings:
-    redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    redis_index: str = os.getenv("REDIS_INDEX", "paper_chunks")
-    embedding_model: str = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
-    llm_base_url: str = os.getenv("LLM_BASE_URL", "")
-    llm_api_key: str = os.getenv("LLM_API_KEY", "")
-    llm_model: str = os.getenv("LLM_MODEL", "Qwen/Qwen3.5-9B")
-    led_model: str = os.getenv("LED_MODEL", "allenai/led-base-16384")
-    chunk_size: int = int(os.getenv("CHUNK_SIZE", "1200"))
-    chunk_overlap: int = int(os.getenv("CHUNK_OVERLAP", "150"))
-    max_upload_bytes: int = int(os.getenv("MAX_UPLOAD_BYTES", str(20 * 1024 * 1024)))
-    allow_origins: str = os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:5173")
-    use_local_fallbacks: bool = _bool("USE_LOCAL_FALLBACKS", True)
-
-
-settings = Settings()
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main

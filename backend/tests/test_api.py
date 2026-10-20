@@ -107,6 +107,24 @@ def test_qa_without_llm_returns_evidence_only(client, two_papers):
     assert none["status"] == "insufficient_evidence"
 
 
+def test_qa_reuses_only_matching_cached_retrieval(client, two_papers):
+    search = client.post("/api/search", json={"query": "hard negatives mined using BM25", "top_k": 1}).json()
+    hit = search["results"][0]
+    payload = {
+        "query": "hard negatives mined using BM25",
+        "paper_ids": two_papers,
+        "top_k": 1,
+        "retrieval_id": search["retrieval_id"],
+    }
+    response = client.post("/api/qa", json=payload)
+    assert response.status_code == 200 and response.json()["evidence"][0]["text"] == hit["text"]
+    assert response.json()["retrieval"]["mode"] == "hybrid"
+    # A mismatched token is ignored; the normal query is re-run, never trusted as arbitrary evidence.
+    mismatched_search = client.post("/api/search", json={"query": "hard negatives mined using BM25", "top_k": 1}).json()
+    payload.update({"query": "quantum chromodynamics", "retrieval_id": mismatched_search["retrieval_id"]})
+    assert client.post("/api/qa", json=payload).json()["evidence"] == []
+
+
 def test_summaries(client, two_papers):
     body = client.post("/api/summarize", json={"paper_id": "P001"}).json()
     assert body["summary"] and body["sections"]
@@ -124,6 +142,7 @@ def test_compare_and_insights(client, two_papers):
     ins = client.post("/api/insights", json={"paper_ids": two_papers})
     assert ins.status_code == 200 and ins.json()["paper_count"] == 2
     assert client.post("/api/insights", json={"paper_ids": ["P001"]}).status_code == 422
+    assert client.post("/api/insights", json={"paper_ids": ["P001"] * 101}).status_code == 422
 
 
 def test_evaluation_endpoints(client, two_papers):
@@ -152,7 +171,9 @@ def test_reindex_paper(client, two_papers):
 
 
 def test_unexpected_errors_do_not_leak_internals(client, monkeypatch):
-    import api.app as app_module
+    import sys
+
+    app_module = sys.modules["api.app"]
 
     monkeypatch.setattr(app_module, "list_papers", lambda: (_ for _ in ()).throw(RuntimeError("secret /etc/path password=hunter2")))
     safe = TestClient(app, raise_server_exceptions=False)

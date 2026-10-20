@@ -24,6 +24,13 @@ describe('paper-api', () => {
     expect(body).toEqual({ query: 'What dataset?' });
   });
 
+  it('sends the opaque retrieval id with the QA request', async () => {
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(() => reply({ status: 'evidence_only', evidence: [] }));
+    await askPapers('What result?', ['P001'], undefined, 'opaque-retrieval-id-123456');
+    const body = JSON.parse((spy.mock.calls[0][1] as RequestInit).body as string);
+    expect(body).toEqual({ query: 'What result?', paper_ids: ['P001'], retrieval_id: 'opaque-retrieval-id-123456' });
+  });
+
   it('polls a job until it reaches a terminal state', async () => {
     const states = [job({ status: 'processing', progress: 40 }), job({ status: 'completed', progress: 100 })];
     vi.spyOn(globalThis, 'fetch').mockImplementation(() => reply(states.shift()));

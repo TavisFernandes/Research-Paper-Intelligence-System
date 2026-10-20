@@ -6,12 +6,16 @@ import { ChatPanel } from './ChatPanel';
 import { CompareView } from './CompareView';
 import { UploadPanel } from './UploadPanel';
 
-vi.mock('@/lib/paper-api', async () => ({ ...(await vi.importActual<typeof import('@/lib/paper-api')>('@/lib/paper-api')), askPapers: vi.fn(), uploadPapers: vi.fn(), waitForJob: vi.fn() }));
+vi.mock('@/lib/paper-api', async () => ({ ...(await vi.importActual<typeof import('@/lib/paper-api')>('@/lib/paper-api')), askPapers: vi.fn(), searchPapers: vi.fn(), uploadPapers: vi.fn(), waitForJob: vi.fn() }));
 
 const evidence = { ref: 1, paper_id: 'P001', title: 'Paper One', filename: 'a.pdf', chunk_id: 'P001_RESULTS_001', section_name: 'RESULTS', page_start: 3, page_end: 3, text: 'Recall@10 was 0.91.', score: 0.03, dense_score: 0.71, lexical_coverage: 0.8 };
 const base = { evidence: [evidence], grounded: true, citations_used: [1], retrieval: { mode: 'hybrid', embedding_backend: 'bge-m3', vector_store: 'redis', warnings: [] }, generation: { backend: 'openai-compatible', model: 'm' } };
+const searchResult = { retrieval_id: 'retrieval-token-for-test', mode: 'hybrid', embedding_backend: 'bge-m3', vector_store: 'redis', warnings: [], results: [((({ ref: _, ...item }) => item)(evidence))], returned: 1 };
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(api.searchPapers).mockResolvedValue(searchResult);
+});
 
 describe('ChatPanel', () => {
   it('shows the answer with source metadata for each evidence passage', async () => {
@@ -20,11 +24,28 @@ describe('ChatPanel', () => {
     await userEvent.type(screen.getByLabelText('Research question'), 'What recall?');
     await userEvent.click(screen.getByLabelText('Send question'));
     expect(await screen.findByText('It was 0.91 [1].')).toBeInTheDocument();
+    expect(api.searchPapers).toHaveBeenCalledTimes(1);
+    expect(api.askPapers).toHaveBeenCalledWith('What recall?', ['P001'], undefined, searchResult.retrieval_id);
     const item = screen.getByTestId('evidence-1');
     expect(item).toHaveTextContent('Paper One');
     expect(item).toHaveTextContent('Results');
     expect(item).toHaveTextContent('p. 3');
     expect(item).toHaveTextContent('Recall@10 was 0.91.');
+  });
+
+  it('shows retrieved evidence while the answer is still generating', async () => {
+    let finishAnswer!: (response: typeof base & { status: 'answered'; answer: string }) => void;
+    vi.mocked(api.askPapers).mockReturnValue(new Promise(resolve => { finishAnswer = resolve; }));
+    render(<ChatPanel paperIds={['P001']} scopeLabel="Paper One" />);
+    await userEvent.type(screen.getByLabelText('Research question'), 'What recall?');
+    await userEvent.click(screen.getByLabelText('Send question'));
+
+    expect(await screen.findByTestId('evidence-1')).toHaveTextContent('Recall@10 was 0.91.');
+    expect(screen.getByText('Relevant passages are ready. A cited answer is still being generated.')).toBeInTheDocument();
+    expect(screen.getByText('Writing a cited answer…')).toBeInTheDocument();
+
+    finishAnswer({ ...base, status: 'answered', answer: 'It was 0.91 [1].' });
+    expect(await screen.findByText('It was 0.91 [1].')).toBeInTheDocument();
   });
 
   it('states clearly when evidence is insufficient or no LLM is configured', async () => {
@@ -35,12 +56,13 @@ describe('ChatPanel', () => {
     expect(await screen.findByText(/No language model is configured/)).toBeInTheDocument();
   });
 
-  it('shows an error state when the request fails', async () => {
+  it('shows an answer-generation error while keeping retrieved evidence visible', async () => {
     vi.mocked(api.askPapers).mockRejectedValue(new Error('The vector store is unavailable.'));
     render(<ChatPanel paperIds={[]} scopeLabel="x" />);
     await userEvent.type(screen.getByLabelText('Research question'), 'q');
     await userEvent.click(screen.getByLabelText('Send question'));
-    expect(await screen.findByRole('alert')).toHaveTextContent('vector store is unavailable');
+    expect(await screen.findByText('The vector store is unavailable.')).toBeInTheDocument();
+    expect(screen.getByTestId('evidence-1')).toBeInTheDocument();
   });
 });
 

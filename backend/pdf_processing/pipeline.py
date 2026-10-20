@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 """Module-1 pipeline: PDF -> pages -> cleaning -> sections -> chunks -> analysis -> index."""
 from __future__ import annotations
 
@@ -23,25 +21,6 @@ from .sections import detect_sections
 logger = logging.getLogger(__name__)
 ProgressFn = Callable[[str, int], None]
 MIN_TOTAL_WORDS = 20
-=======
-=======
->>>>>>> origin/main
-from pathlib import Path
-from typing import Dict, Optional, Union
-from uuid import uuid4
-
-from .chunks import create_chunks
-from .pdf import extract_pages
-from .preprocess import clean_text
-from .sections import detect_sections
-from config import settings
-from nlp import extract_entities, extract_keywords
-from embeddings import embedder
-from vector_store import vector_store
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main
 
 
 def generate_paper_id(existing_ids: Optional[set[str]] = None) -> str:
@@ -53,8 +32,6 @@ def generate_paper_id(existing_ids: Optional[set[str]] = None) -> str:
     return f"P{index:03d}"
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 def _choose_title(extracted: ExtractedDocument, filename: str) -> tuple[Optional[str], Optional[str]]:
     meta = str(extracted.metadata.get("title") or "").strip()
     if 8 <= len(meta) <= 250 and not re.search(r"\.(pdf|docx?|tex|dvi)$|untitled|microsoft word", meta, re.I):
@@ -153,40 +130,3 @@ def process_paper(path: Union[str, Path], paper_id: Optional[str] = None, chunk_
         paper["status"] = "indexed"
     note("done", 100)
     return paper
-=======
-=======
->>>>>>> origin/main
-def process_paper(path: Union[str, Path], paper_id: Optional[str] = None, chunk_size: int = settings.chunk_size, overlap: int = settings.chunk_overlap) -> Dict[str, object]:
-    source = Path(path)
-    resolved_id = paper_id or generate_paper_id()
-    raw_pages = extract_pages(source)
-    pages = []
-    for page in raw_pages:
-        pages.append({
-            "paper_id": resolved_id,
-            "page_number": page["page_number"],
-            "extraction_method": page["extraction_method"],
-            "raw_text": page["raw_text"],
-            "cleaned_text": clean_text(str(page["raw_text"])),
-        })
-    sections = detect_sections(pages, resolved_id)
-    chunks = create_chunks(sections, chunk_size=chunk_size, overlap=overlap)
-    full_text = "\n".join(page["cleaned_text"] for page in pages)
-    analysis = {"keywords": extract_keywords(full_text), "entities": extract_entities(full_text)}
-    if chunks:
-        vector_store.delete_paper(resolved_id)
-        vector_store.upsert_chunks(chunks, embedder.encode([str(chunk["text"]) for chunk in chunks]))
-    return {
-        "paper_id": resolved_id,
-        "filename": source.name,
-        "total_pages": len(pages),
-        "pages": pages,
-        "sections": sections,
-        "chunks": chunks,
-        "analysis": analysis,
-        "indexing": {"chunk_count": len(chunks), "embedding_backend": embedder.backend, "vector_store": vector_store.backend},
-    }
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main

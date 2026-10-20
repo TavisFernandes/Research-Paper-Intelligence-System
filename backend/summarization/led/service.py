@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 """Long-document summarisation: LED (token-aware, windowed) with an honest extractive fallback.
 
 * LED is loaded once (lazily) and only when ``ENABLE_LED=true``. ``LED_MODEL`` may be a Hugging Face id
@@ -28,6 +26,17 @@ SUMMARY_SECTION_ORDER = ["ABSTRACT", "INTRODUCTION", "RELATED_WORK", "METHODOLOG
 _EXCLUDED = {"REFERENCES", "ACKNOWLEDGMENTS", "APPENDIX"}
 
 
+# Cap TF-IDF pool so long survey PDFs stay interactive (still covers the document via even sampling).
+_MAX_EXTRACTIVE_CANDIDATES = 240
+
+
+def _candidate_sentences(sentences: List[str], limit: int = _MAX_EXTRACTIVE_CANDIDATES) -> List[str]:
+    if len(sentences) <= limit:
+        return sentences
+    step = len(sentences) / limit
+    return [sentences[int(i * step)] for i in range(limit)]
+
+
 # --------------------------------------------------------------------------- extractive
 def extractive_summary(text: str, max_sentences: int = 5) -> Tuple[str, List[str]]:
     """Centrality-based extractive summary (TF-IDF cosine to the document centroid), in document order."""
@@ -36,22 +45,23 @@ def extractive_summary(text: str, max_sentences: int = 5) -> Tuple[str, List[str
         return "", []
     if len(sentences) <= max_sentences:
         return " ".join(sentences), sentences
+    pool = _candidate_sentences(sentences)
     scores: List[float]
     try:
         import numpy as np
         from sklearn.feature_extraction.text import TfidfVectorizer
 
-        matrix = TfidfVectorizer(stop_words="english", sublinear_tf=True).fit_transform(sentences)
+        matrix = TfidfVectorizer(stop_words="english", sublinear_tf=True).fit_transform(pool)
         centroid = np.asarray(matrix.mean(axis=0))
         scores = (matrix @ centroid.T).ravel().tolist()
     except Exception:
         freq: Dict[str, int] = {}
-        for s in sentences:
+        for s in pool:
             for w in re.findall(r"[a-z]{4,}", s.lower()):
                 freq[w] = freq.get(w, 0) + 1
-        scores = [sum(freq.get(w, 0) for w in re.findall(r"[a-z]{4,}", s.lower())) / (len(s.split()) or 1) for s in sentences]
-    top = sorted(sorted(range(len(sentences)), key=lambda i: scores[i], reverse=True)[:max_sentences])
-    chosen = [sentences[i] for i in top]
+        scores = [sum(freq.get(w, 0) for w in re.findall(r"[a-z]{4,}", s.lower())) / (len(s.split()) or 1) for s in pool]
+    top = sorted(sorted(range(len(pool)), key=lambda i: scores[i], reverse=True)[:max_sentences])
+    chosen = [pool[i] for i in top]
     return " ".join(chosen), chosen
 
 
@@ -202,31 +212,3 @@ def _highlights(paper: Dict[str, Any]) -> Dict[str, List[str]]:
     groups = {"datasets": "DATASET", "models": "MODEL", "algorithms": "ALGORITHM", "metrics": "METRIC", "organizations": "ORGANIZATION"}
     entities = paper.get("analysis", {}).get("entities", [])
     return {key: [e["text"] for e in entities if e["label"] == label][:8] for key, label in groups.items()}
-=======
-=======
->>>>>>> origin/main
-"""Long-document summary service; LED is loaded lazily, extractive summary is always available."""
-from pdf_processing.preprocess import segment_sentences
-from config import settings
-
-
-def summarize(text: str, max_sentences: int = 5) -> dict[str, object]:
-    sentences = segment_sentences(text)
-    if not sentences:
-        return {"summary": "No extractable text is available.", "backend": "extractive", "sentence_count": 0}
-    # LED loading is intentionally lazy and only enabled by explicit environment choice.
-    if __import__("os").getenv("ENABLE_LED", "false").lower() == "true":
-        try:
-            from transformers import pipeline
-            model = pipeline("summarization", model=settings.led_model)
-            result = model(text[:60_000], max_length=256, min_length=40, do_sample=False)[0]["summary_text"]
-            return {"summary": result, "backend": "led", "sentence_count": len(sentences)}
-        except Exception:
-            pass
-    ranked = sorted(enumerate(sentences), key=lambda item: len(item[1]), reverse=True)[:max_sentences]
-    ranked.sort()
-    return {"summary": " ".join(sentence for _, sentence in ranked), "backend": "extractive", "sentence_count": len(sentences)}
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main
