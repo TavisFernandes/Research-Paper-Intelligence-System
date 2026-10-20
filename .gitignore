@@ -15,6 +15,7 @@ checkpoints/
 *.safetensors
 *.bin
 Model_Training/LED_Model/*.pth
+Model_Training/BGE_M3_Model/*.pth
 # node
 node_modules/
 dist/
